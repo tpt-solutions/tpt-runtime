@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/tpt-runtime-core",
+    "crates/tpt-runtime-model",
+    "crates/tpt-runtime-config",
+    "crates/tpt-runtime-policy",
+    "crates/tpt-runtime-capability",
+    "crates/tpt-runtime-workload",
+    "crates/tpt-runtime-process",
+    "crates/tpt-runtime-windows",
+    "crates/tpt-runtime-linux",
+    "crates/tpt-runtime-oci",
+    "crates/tpt-runtime-wasm",
+    "crates/tpt-runtime-storage",
+    "crates/tpt-runtime-network",
+    "crates/tpt-runtime-device",
+    "crates/tpt-runtime-gpu",
+    "crates/tpt-runtime-ipc",
+    "crates/tpt-runtime-security",
+    "crates/tpt-runtime-observe",
+    "crates/tpt-runtime-api",
+    "crates/tpt-runtime-daemon",
+    "crates/tpt-runtime-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tpt-solutions/tpt-runtime"
+
+[workspace.dependencies]
