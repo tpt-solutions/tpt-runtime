@@ -1,0 +1,18 @@
+[package]
+name = "tpt-runtime-process"
+description = "Execution backend interface and workload instances (SPEC 10)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tpt-runtime-capability = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-model = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+uuid = { workspace = true }

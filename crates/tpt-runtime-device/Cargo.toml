@@ -1,0 +1,15 @@
+[package]
+name = "tpt-runtime-device"
+description = "Device model: logical device registry and request checks (SPEC 19)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-model = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

@@ -1,0 +1,30 @@
+[package]
+name = "tpt-runtime-daemon"
+description = "Windows host daemon wiring every runtime subsystem together (SPEC 43)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde_json = { workspace = true }
+tpt-runtime-api = { workspace = true }
+tpt-runtime-config = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-device = { workspace = true }
+tpt-runtime-gpu = { workspace = true }
+tpt-runtime-linux = { workspace = true }
+tpt-runtime-network = { workspace = true }
+tpt-runtime-observe = { workspace = true }
+tpt-runtime-policy = { workspace = true }
+tpt-runtime-oci = { workspace = true }
+tpt-runtime-security = { workspace = true }
+tpt-runtime-storage = { workspace = true }
+tpt-runtime-wasm = { workspace = true }
+tpt-runtime-windows = { workspace = true }
+tpt-runtime-workload = { workspace = true }
+tokio = { workspace = true }
+
+[[bin]]
+name = "tpt-runtime-daemon"
+path = "src/main.rs"

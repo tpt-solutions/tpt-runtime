@@ -1,0 +1,20 @@
+# tpt.runtime/v1 workload manifest (SPEC §32)
+# Run with:  tpt run --manifest examples/windows-echo.toml
+
+api = "tpt.runtime/v1"
+
+[workload]
+name = "windows-echo"
+
+[execution]
+backend = "windows"
+program = "cmd.exe"
+args = ["/C", "echo hello from a manifest"]
+
+[resources]
+cpu = 1
+memory = "256MiB"
+timeout_secs = 60
+
+[network]
+mode = "none"

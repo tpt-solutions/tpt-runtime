@@ -1,0 +1,17 @@
+[package]
+name = "tpt-runtime-network"
+description = "Logical network abstraction: intents and port allocation (SPEC 18)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-model = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }

@@ -1,0 +1,18 @@
+[package]
+name = "tpt-runtime-windows"
+description = "Native Windows process backend: job objects, capture, accounting (SPEC 12)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde_json = { workspace = true }
+tpt-runtime-capability = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-model = { workspace = true }
+tpt-runtime-process = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }

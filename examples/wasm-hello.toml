@@ -1,0 +1,22 @@
+# tpt.runtime/v1 workload manifest (SPEC §32)
+# Run with:  tpt run --manifest examples/wasm-hello.toml
+#
+# The module is WAT text; wasmtime accepts text or binary regardless of
+# the file extension, which keeps the example readable.
+
+api = "tpt.runtime/v1"
+
+[workload]
+name = "wasm-hello"
+
+[execution]
+backend = "wasm"
+module = "examples/hello.wasm"
+class = "command"
+
+[resources]
+fuel = 100000
+timeout_secs = 30
+
+[network]
+mode = "none"

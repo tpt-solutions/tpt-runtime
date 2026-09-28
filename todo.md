@@ -2,70 +2,76 @@
 
 Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (§44), plus the MVP target (§43) and cross-cutting testing/security work (§45–46).
 
+Status after the first implementation pass: the MVP (§43) is working end to
+end on Windows — daemon, CLI, Windows-process and WASM backends, lifecycle,
+events, observability — with 46 test suites green. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the map and known MVP
+limitations.
+
 ## MVP Capabilities (§43)
 
-- [ ] Windows host daemon
-- [ ] Workload manifest
-- [ ] Workload lifecycle
-- [ ] Native Windows process backend
-- [ ] OCI backend through Boxcar-compatible primitives
-- [ ] WASM backend
-- [ ] Logical volume abstraction
-- [ ] Logical network abstraction
-- [ ] Capability model
-- [ ] Resource accounting
-- [ ] CLI
-- [ ] Local API
-- [ ] Structured events
-- [ ] Basic observability
+- [x] Windows host daemon
+- [x] Workload manifest
+- [x] Workload lifecycle
+- [x] Native Windows process backend
+- [ ] OCI backend through Boxcar-compatible primitives *(refs, bundle model and content store done; `start` awaits the tpt-boxcar isolation provider)*
+- [x] WASM backend
+- [x] Logical volume abstraction
+- [x] Logical network abstraction *(intents + port allocation; enforcement for native processes is policy/audit — WASM is enforced)*
+- [x] Capability model
+- [x] Resource accounting
+- [x] CLI
+- [x] Local API
+- [x] Structured events
+- [x] Basic observability
 
 ## Phase 0 — Architecture
 
-- [ ] Define workload model
-- [ ] Define resource model
-- [ ] Define capability model
-- [ ] Define lifecycle
-- [ ] Define API
-- [ ] Define event model
-- [ ] Define crate boundaries
-- [ ] Document Archon integration points
-- [ ] Document Boxcar integration points
+- [x] Define workload model
+- [x] Define resource model
+- [x] Define capability model
+- [x] Define lifecycle
+- [x] Define API
+- [x] Define event model
+- [x] Define crate boundaries
+- [x] Document Archon integration points
+- [x] Document Boxcar integration points
 
 ## Phase 1 — Runtime Core
 
-- [ ] Create workspace
-- [ ] Implement identifiers
-- [ ] Implement workload state machine
-- [ ] Implement manifests
-- [ ] Implement configuration
-- [ ] Implement errors
-- [ ] Implement events
+- [x] Create workspace
+- [x] Implement identifiers
+- [x] Implement workload state machine
+- [x] Implement manifests
+- [x] Implement configuration
+- [x] Implement errors
+- [x] Implement events
 
 ## Phase 2 — Windows Runtime
 
-- [ ] Runtime daemon
-- [ ] Windows process backend
-- [ ] Process lifecycle
-- [ ] Environment management
-- [ ] stdout/stderr capture
-- [ ] Resource accounting
-- [ ] CLI
+- [x] Runtime daemon
+- [x] Windows process backend
+- [x] Process lifecycle
+- [x] Environment management
+- [x] stdout/stderr capture
+- [x] Resource accounting
+- [x] CLI
 
 ## Phase 3 — WASM
 
-- [ ] WASM backend
-- [ ] Sandbox
-- [ ] Resource limits
-- [ ] Filesystem capabilities
-- [ ] Network capabilities
-- [ ] Service lifecycle
+- [x] WASM backend
+- [x] Sandbox
+- [x] Resource limits
+- [x] Filesystem capabilities
+- [x] Network capabilities *(deny-by-default; socket grants reserved for a future host extension)*
+- [x] Service lifecycle *(long-running modules run under epoch/fuel limits and honor stop; service mesh integration later)*
 
 ## Phase 4 — OCI
 
-- [ ] OCI image support
-- [ ] Image cache
+- [ ] OCI image support *(reference parsing, bundle model and content store done; registry pull awaits Boxcar)*
+- [ ] Image cache *(local content-addressed store exists; pull/pin policies pending)*
 - [ ] Filesystem preparation
-- [ ] Workload lifecycle
+- [ ] Workload lifecycle *(start reports `not_implemented` pending Boxcar)*
 - [ ] Networking
 - [ ] Volumes
 - [ ] Capability integration
@@ -81,8 +87,8 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 
 ## Phase 6 — Linux
 
-- [ ] Linux backend abstraction
-- [ ] WSL integration
+- [x] Linux backend abstraction *(WSL-backed backend; tested on the error path, real-distro testing pending)*
+- [ ] WSL integration *(wsl.exe execution implemented; distro lifecycle, per-workload accounting pending)*
 - [ ] Linux workload lifecycle
 - [ ] Linux networking
 - [ ] Linux storage
@@ -91,8 +97,8 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 
 ## Phase 7 — GPU
 
-- [ ] GPU discovery
-- [ ] GPU capability model
+- [x] GPU discovery *(nvidia-smi; verified on RTX 3050 host)*
+- [ ] GPU capability model *(device registry + policy checks exist; per-process CUDA isolation pending)*
 - [ ] NVIDIA integration
 - [ ] GPU telemetry
 - [ ] TPT Infer integration
@@ -120,17 +126,17 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 ## Testing Strategy (§45)
 
 ### Unit tests
-- [ ] Manifests
-- [ ] State transitions
-- [ ] Policies
-- [ ] Capabilities
-- [ ] Resource calculations
-- [ ] Identifiers
-- [ ] Event serialization
+- [x] Manifests
+- [x] State transitions
+- [x] Policies
+- [x] Capabilities
+- [x] Resource calculations
+- [x] Identifiers
+- [x] Event serialization
 
 ### Integration tests
-- [ ] runtime → Windows process
-- [ ] runtime → WASM
+- [x] runtime → Windows process
+- [x] runtime → WASM
 - [ ] runtime → OCI
 - [ ] runtime → Archon
 - [ ] runtime → Boxcar
@@ -145,24 +151,24 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 - [ ] Network
 
 ### Failure tests
-- [ ] Workload crashes
-- [ ] Resource exhaustion
-- [ ] Capability denial
+- [x] Workload crashes *(watcher → `workload.failed`, killed-vs-crash attribution)*
+- [ ] Resource exhaustion *(WASM fuel exhaustion covered in wasm tests; OS-level limits pending)*
+- [x] Capability denial *(unit level; backend enforcement tests pending)*
 - [ ] Device disappearance
 - [ ] Network failure
 - [ ] Storage failure
-- [ ] Runtime restart
+- [ ] Runtime restart *(kill-on-close job semantics design-verified; scripted test pending)*
 - [ ] Host restart
 
 ## Security Testing (§46)
 
 - [ ] Capability escalation tests
-- [ ] Filesystem escape tests
+- [ ] Filesystem escape tests *(bundle rootfs escape checks exist; runtime-level tests pending)*
 - [ ] Process isolation tests
 - [ ] Network isolation tests
-- [ ] Secret leakage tests
+- [ ] Secret leakage tests *(listing redaction covered in security tests; e2e pending)*
 - [ ] Device access tests
-- [ ] Malformed manifest tests
+- [x] Malformed manifest tests
 - [ ] Malicious image tests
-- [ ] WASM sandbox tests
+- [ ] WASM sandbox tests *(sandbox mechanics tested; adversarial module suite pending)*
 - [ ] OCI isolation tests

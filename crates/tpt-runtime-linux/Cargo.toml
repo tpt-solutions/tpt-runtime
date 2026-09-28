@@ -1,0 +1,17 @@
+[package]
+name = "tpt-runtime-linux"
+description = "Linux execution environments: WSL integration first (SPEC 11)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+tpt-runtime-capability = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-model = { workspace = true }
+tpt-runtime-process = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[target.'cfg(windows)'.dependencies]
+serde_json = { workspace = true }

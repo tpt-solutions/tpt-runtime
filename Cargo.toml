@@ -31,3 +31,70 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/tpt-solutions/tpt-runtime"
 
 [workspace.dependencies]
+# internal crates
+tpt-runtime-core = { path = "crates/tpt-runtime-core", version = "0.1.0" }
+tpt-runtime-model = { path = "crates/tpt-runtime-model", version = "0.1.0" }
+tpt-runtime-config = { path = "crates/tpt-runtime-config", version = "0.1.0" }
+tpt-runtime-policy = { path = "crates/tpt-runtime-policy", version = "0.1.0" }
+tpt-runtime-capability = { path = "crates/tpt-runtime-capability", version = "0.1.0" }
+tpt-runtime-workload = { path = "crates/tpt-runtime-workload", version = "0.1.0" }
+tpt-runtime-process = { path = "crates/tpt-runtime-process", version = "0.1.0" }
+tpt-runtime-windows = { path = "crates/tpt-runtime-windows", version = "0.1.0" }
+tpt-runtime-linux = { path = "crates/tpt-runtime-linux", version = "0.1.0" }
+tpt-runtime-oci = { path = "crates/tpt-runtime-oci", version = "0.1.0" }
+tpt-runtime-wasm = { path = "crates/tpt-runtime-wasm", version = "0.1.0" }
+tpt-runtime-storage = { path = "crates/tpt-runtime-storage", version = "0.1.0" }
+tpt-runtime-network = { path = "crates/tpt-runtime-network", version = "0.1.0" }
+tpt-runtime-device = { path = "crates/tpt-runtime-device", version = "0.1.0" }
+tpt-runtime-gpu = { path = "crates/tpt-runtime-gpu", version = "0.1.0" }
+tpt-runtime-ipc = { path = "crates/tpt-runtime-ipc", version = "0.1.0" }
+tpt-runtime-security = { path = "crates/tpt-runtime-security", version = "0.1.0" }
+tpt-runtime-observe = { path = "crates/tpt-runtime-observe", version = "0.1.0" }
+tpt-runtime-api = { path = "crates/tpt-runtime-api", version = "0.1.0" }
+tpt-runtime-daemon = { path = "crates/tpt-runtime-daemon", version = "0.1.0" }
+tpt-runtime-cli = { path = "crates/tpt-runtime-cli", version = "0.1.0" }
+
+# external
+anyhow = "1"
+bytes = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+time = { version = "0.3", features = ["formatting", "parsing", "serde"] }
+tokio = { version = "1", features = [
+    "fs",
+    "io-util",
+    "macros",
+    "net",
+    "process",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+] }
+toml = "0.9"
+uuid = { version = "1", features = ["v4", "serde"] }
+wasmtime = "49"
+wasmtime-wasi = "49"
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Diagnostics",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+] }
+
+[profile.release]
+lto = "thin"
+
+# Keep on-disk artifacts small: full debug info (esp. for wasmtime) is
+# multi-GB and the host drive runs close to capacity.
+[profile.dev]
+debug = false
+
+[profile.test]
+debug = false

@@ -1,0 +1,15 @@
+[package]
+name = "tpt-runtime-gpu"
+description = "GPU discovery and telemetry (SPEC 20): NVIDIA first"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-device = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

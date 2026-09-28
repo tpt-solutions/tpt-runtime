@@ -1,0 +1,29 @@
+[package]
+name = "tpt-runtime-workload"
+description = "Workload manager: lifecycle orchestration across execution backends (SPEC 9, 26)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tpt-runtime-capability = { workspace = true }
+tpt-runtime-core = { workspace = true }
+tpt-runtime-device = { workspace = true }
+tpt-runtime-gpu = { workspace = true }
+tpt-runtime-model = { workspace = true }
+tpt-runtime-network = { workspace = true }
+tpt-runtime-observe = { workspace = true }
+tpt-runtime-oci = { workspace = true }
+tpt-runtime-policy = { workspace = true }
+tpt-runtime-process = { workspace = true }
+tpt-runtime-security = { workspace = true }
+tpt-runtime-storage = { workspace = true }
+tpt-runtime-wasm = { workspace = true }
+tpt-runtime-windows = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
+
+[dev-dependencies]
+uuid = { workspace = true }
