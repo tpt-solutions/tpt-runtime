@@ -40,7 +40,7 @@ pub enum EventKind {
 
 impl EventKind {
     /// Parses the dotted event name (`workload.started`).
-    pub fn from_str(name: &str) -> Option<Self> {
+    pub fn parse_name(name: &str) -> Option<Self> {
         let kind = match name {
             "workload.created" => EventKind::WorkloadCreated,
             "workload.resolved" => EventKind::WorkloadResolved,
@@ -107,7 +107,7 @@ impl Serialize for EventKind {
 impl<'de> Deserialize<'de> for EventKind {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let name = String::deserialize(deserializer)?;
-        EventKind::from_str(&name)
+        EventKind::parse_name(&name)
             .ok_or_else(|| serde::de::Error::custom(format!("unknown event name: {name}")))
     }
 }

@@ -88,7 +88,7 @@ pub fn discover_gpus() -> Result<Vec<GpuInfo>> {
             name: fields[1].to_owned(),
             memory_total_mib: fields[2].parse().unwrap_or(0),
             driver_version: fields[3].to_owned(),
-            uuid: Some(fields[4].to_owned()).filter(|u| u != &"[N/A]"),
+            uuid: Some(fields[4].to_owned()).filter(|u| u != "[N/A]"),
         });
     }
     Ok(gpus)

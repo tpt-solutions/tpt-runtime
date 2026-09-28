@@ -160,7 +160,7 @@ impl ExecutionBackend for WasmBackend {
         let timeout = spec
             .resources
             .timeout_secs
-            .map(|secs| Duration::from_secs(secs))
+            .map(Duration::from_secs)
             .unwrap_or(Duration::MAX);
         // saturating far-future deadline when no timeout is requested
         let deadline = std::time::Instant::now() + timeout.min(Duration::from_secs(60 * 60 * 24 * 365));
@@ -228,11 +228,12 @@ impl WorkloadInstance for WasmInstance {
         // WASI pipes already feed the log files; byte counters come from
         // their sizes. Memory is filled by the engine path where an exported
         // linear memory exists (updated at exit).
-        let mut usage = ResourceUsage::default();
-        usage.write_bytes = pipe_file_len(&self.stdout_path) + pipe_file_len(&self.stderr_path);
-        usage.memory_peak_bytes = *self.memory_bytes.lock().unwrap();
-        usage.collected_at = Some(tpt_runtime_core::Timestamp::now());
-        Ok(usage)
+        Ok(ResourceUsage {
+            write_bytes: pipe_file_len(&self.stdout_path) + pipe_file_len(&self.stderr_path),
+            memory_peak_bytes: *self.memory_bytes.lock().unwrap(),
+            collected_at: Some(tpt_runtime_core::Timestamp::now()),
+            ..Default::default()
+        })
     }
 
     fn stop(&self, _mode: StopMode) -> Result<()> {

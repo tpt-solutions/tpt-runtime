@@ -30,47 +30,7 @@ enum Command {
     /// Daemon status summary.
     Status,
     /// Run a workload.
-    Run {
-        /// Run a native Windows executable.
-        #[arg(long, value_name = "EXE")]
-        windows: Option<String>,
-        /// Run a WASM module (`.wasm` or WAT text).
-        #[arg(long, value_name = "MODULE")]
-        wasm: Option<String>,
-        /// Run an OCI image (pulling requires tpt-boxcar; local store only).
-        #[arg(long, value_name = "IMAGE")]
-        oci: Option<String>,
-        /// Run from a manifest file.
-        #[arg(long, value_name = "FILE")]
-        manifest: Option<String>,
-        /// Workload name (defaults to a generated one).
-        #[arg(long, short)]
-        name: Option<String>,
-        /// CPU cores.
-        #[arg(long)]
-        cpu: Option<f64>,
-        /// Memory limit, e.g. `4GiB`.
-        #[arg(long)]
-        memory: Option<String>,
-        /// Wall-clock timeout in seconds.
-        #[arg(long)]
-        timeout: Option<u64>,
-        /// WASM fuel limit (instructions).
-        #[arg(long)]
-        fuel: Option<u64>,
-        /// Network mode (none, host, private, outbound, service, isolated).
-        #[arg(long)]
-        network: Option<String>,
-        /// Volume mount `name:/guest/path[:ro]` (repeatable).
-        #[arg(long = "volume", value_name = "NAME:PATH[:RO]")]
-        volumes: Vec<String>,
-        /// Capability grant (repeatable), e.g. `network.outbound`.
-        #[arg(long = "cap", value_name = "NAME")]
-        capabilities: Vec<String>,
-        /// Arguments after `--` for the workload program.
-        #[arg(last = true)]
-        args: Vec<String>,
-    },
+    Run(Box<RunArgs>),
     /// List workloads.
     List,
     /// Inspect a workload.
@@ -112,6 +72,50 @@ enum Command {
         #[command(subcommand)]
         action: SecretAction,
     },
+}
+
+/// Arguments of `tpt run`.
+#[derive(clap::Args)]
+struct RunArgs {
+    /// Run a native Windows executable.
+    #[arg(long, value_name = "EXE")]
+    windows: Option<String>,
+    /// Run a WASM module (`.wasm` or WAT text).
+    #[arg(long, value_name = "MODULE")]
+    wasm: Option<String>,
+    /// Run an OCI image (pulling requires tpt-boxcar; local store only).
+    #[arg(long, value_name = "IMAGE")]
+    oci: Option<String>,
+    /// Run from a manifest file.
+    #[arg(long, value_name = "FILE")]
+    manifest: Option<String>,
+    /// Workload name (defaults to a generated one).
+    #[arg(long, short)]
+    name: Option<String>,
+    /// CPU cores.
+    #[arg(long)]
+    cpu: Option<f64>,
+    /// Memory limit, e.g. `4GiB`.
+    #[arg(long)]
+    memory: Option<String>,
+    /// Wall-clock timeout in seconds.
+    #[arg(long)]
+    timeout: Option<u64>,
+    /// WASM fuel limit (instructions).
+    #[arg(long)]
+    fuel: Option<u64>,
+    /// Network mode (none, host, private, outbound, service, isolated).
+    #[arg(long)]
+    network: Option<String>,
+    /// Volume mount `name:/guest/path[:ro]` (repeatable).
+    #[arg(long = "volume", value_name = "NAME:PATH[:RO]")]
+    volumes: Vec<String>,
+    /// Capability grant (repeatable), e.g. `network.outbound`.
+    #[arg(long = "cap", value_name = "NAME")]
+    capabilities: Vec<String>,
+    /// Arguments after `--` for the workload program.
+    #[arg(last = true)]
+    args: Vec<String>,
 }
 
 #[derive(Subcommand)]
@@ -219,21 +223,22 @@ async fn dispatch(cli: Cli) -> Result<()> {
             );
             Ok(())
         }
-        Command::Run {
-            windows,
-            wasm,
-            oci,
-            manifest,
-            name,
-            cpu,
-            memory,
-            timeout,
-            fuel,
-            network,
-            volumes,
-            capabilities,
-            args,
-        } => {
+        Command::Run(run) => {
+            let RunArgs {
+                windows,
+                wasm,
+                oci,
+                manifest,
+                name,
+                cpu,
+                memory,
+                timeout,
+                fuel,
+                network,
+                volumes,
+                capabilities,
+                args,
+            } = *run;
             let chosen = [&windows, &wasm, &oci, &manifest]
                 .iter()
                 .filter(|o| o.is_some())
@@ -280,8 +285,8 @@ async fn dispatch(cli: Cli) -> Result<()> {
                 return Ok(());
             }
             println!(
-                "{:<20} {:<14} {:<10} {:<8} {}",
-                "ID", "NAME", "BACKEND", "STATE", "PORTS"
+                "{:<20} {:<14} {:<10} {:<8} PORTS",
+                "ID", "NAME", "BACKEND", "STATE"
             );
             for item in items {
                 println!(
@@ -336,11 +341,11 @@ async fn dispatch(cli: Cli) -> Result<()> {
             if let Some(mounts) = info["mounts"].as_array() {
                 for mount in mounts {
                     println!(
-                        "  volume      {} → {} ({}{})",
+                        "  volume      {} → {} ({} @ {})",
                         mount["name"].as_str().unwrap_or("?"),
                         mount["mount"].as_str().unwrap_or("?"),
                         mount["mode"].as_str().unwrap_or("read-write"),
-                        format!(" @ {}", mount["host_path"].as_str().unwrap_or("?")),
+                        mount["host_path"].as_str().unwrap_or("?"),
                     );
                 }
             }
@@ -622,13 +627,15 @@ fn build_manifest(
         toml_text = format!("api = \"tpt.runtime/v1\"\n\n{merged}\n");
         apply_overrides(
             &mut toml_text,
-            cpu,
-            memory.as_deref(),
-            timeout,
-            fuel,
-            network.as_deref(),
-            volumes,
-            capabilities,
+            &Overrides {
+                cpu,
+                memory: memory.as_deref(),
+                timeout,
+                fuel,
+                network: network.as_deref(),
+                volumes,
+                capabilities,
+            },
         )?;
         return Ok(toml_text);
     }
@@ -636,27 +643,39 @@ fn build_manifest(
 
     apply_overrides(
         &mut toml_text,
-        cpu,
-        memory.as_deref(),
-        timeout,
-        fuel,
-        network.as_deref(),
-        volumes,
-        capabilities,
+        &Overrides {
+            cpu,
+            memory: memory.as_deref(),
+            timeout,
+            fuel,
+            network: network.as_deref(),
+            volumes,
+            capabilities,
+        },
     )?;
     Ok(toml_text)
 }
 
-fn apply_overrides(
-    toml_text: &mut String,
+struct Overrides<'a> {
     cpu: Option<f64>,
-    memory: Option<&str>,
+    memory: Option<&'a str>,
     timeout: Option<u64>,
     fuel: Option<u64>,
-    network: Option<&str>,
-    volumes: &[String],
-    capabilities: &[String],
-) -> Result<()> {
+    network: Option<&'a str>,
+    volumes: &'a [String],
+    capabilities: &'a [String],
+}
+
+fn apply_overrides(toml_text: &mut String, overrides: &Overrides<'_>) -> Result<()> {
+    let Overrides {
+        cpu,
+        memory,
+        timeout,
+        fuel,
+        network,
+        volumes,
+        capabilities,
+    } = overrides;
     if cpu.is_some() || memory.is_some() || timeout.is_some() || fuel.is_some() {
         toml_text.push_str("[resources]\n");
         if let Some(cpu) = cpu {
@@ -676,7 +695,7 @@ fn apply_overrides(
     if let Some(network) = network {
         toml_text.push_str(&format!("[network]\nmode = \"{network}\"\n\n"));
     }
-    for volume in volumes {
+    for volume in volumes.iter() {
         let (name, rest) = volume
             .split_once(':')
             .ok_or_else(|| anyhow::anyhow!("--volume expects name:path[:ro], got '{volume}'"))?;
@@ -688,7 +707,7 @@ fn apply_overrides(
             "[[volumes]]\nname = \"{name}\"\nmount = \"{mount}\"\nmode = \"{mode}\"\n\n"
         ));
     }
-    for cap in capabilities {
+    for cap in capabilities.iter() {
         toml_text.push_str(&format!("[[capabilities]]\nname = \"{cap}\"\n\n"));
     }
     Ok(())

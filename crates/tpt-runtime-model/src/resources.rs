@@ -99,9 +99,9 @@ impl std::str::FromStr for Memory {
 
 impl fmt::Display for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0 % Memory::GIB == 0 && self.0 >= Memory::GIB {
+        if self.0 >= Memory::GIB && self.0.is_multiple_of(Memory::GIB) {
             write!(f, "{}GiB", self.0 / Memory::GIB)
-        } else if self.0 % Memory::MIB == 0 && self.0 >= Memory::MIB {
+        } else if self.0 >= Memory::MIB && self.0.is_multiple_of(Memory::MIB) {
             write!(f, "{}MiB", self.0 / Memory::MIB)
         } else {
             write!(f, "{}B", self.0)
@@ -135,7 +135,7 @@ impl ResourceSpec {
     /// Validates the request (positive values, sane sizes).
     pub fn validate(&self) -> Result<()> {
         if let Some(cpu) = self.cpu {
-            if !(cpu > 0.0) || cpu > 1024.0 {
+            if cpu <= 0.0 || cpu > 1024.0 {
                 return Err(RuntimeError::new(
                     ErrorKind::InvalidConfiguration,
                     format!("cpu request {cpu} out of range (0, 1024]"),
