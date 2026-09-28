@@ -5,6 +5,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+keywords = ["orchestration", "lifecycle", "manager", "workloads", "workload-management"]
+categories = ["workload-management"]
 
 [dependencies]
 serde = { workspace = true }

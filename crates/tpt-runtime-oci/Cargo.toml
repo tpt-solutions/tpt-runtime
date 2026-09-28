@@ -5,6 +5,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+keywords = ["oci", "containers", "images", "registry", "bundle"]
+categories = ["virtualization"]
 
 [dependencies]
 serde = { workspace = true }

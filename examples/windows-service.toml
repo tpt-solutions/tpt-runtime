@@ -1,0 +1,46 @@
+# A long-running Windows service workload with a volume, a port and limits.
+# Run with:  tpt run --manifest examples/windows-service.toml
+#
+# Demonstrates: service network mode, a fixed exposed port, a read-write
+# volume, resource limits, labels, and an explicit capability grant.
+
+api = "tpt.runtime/v1"
+
+[workload]
+name = "windows-service"
+
+[execution]
+backend = "windows"
+program = "python.exe"
+args = ["-m", "http.server", "8080", "--directory", "/workspace"]
+
+[resources]
+cpu = 2
+memory = "512MiB"
+timeout_secs = 3600
+
+# `service` allows inbound traffic, so ports may be exposed.
+[network]
+mode = "service"
+
+[network.expose]
+http = 8080
+
+[[volumes]]
+name = "project"
+mount = "/workspace"
+mode = "read-write"
+
+# Nothing is granted implicitly: outbound access must be requested.
+[[capabilities]]
+name = "network.inbound"
+
+[[capabilities]]
+name = "filesystem.read"
+
+[[capabilities]]
+name = "filesystem.write"
+
+[labels]
+team = "platform"
+tier = "demo"

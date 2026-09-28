@@ -5,6 +5,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+keywords = ["toml", "manifest", "configuration", "parsing", "schema"]
+categories = ["config"]
 
 [dependencies]
 serde = { workspace = true }

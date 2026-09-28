@@ -1,0 +1,31 @@
+# A GPU workload: the device request alone is not authorization.
+# Run with:  tpt run --manifest examples/windows-gpu.toml
+#
+# Both entries are required: `[[devices]]` says what is needed, and the
+# matching `device:gpu:0` capability is the authorization. Nothing is attached
+# ambiently. On a host with no NVIDIA GPU, admission is denied explicitly.
+
+api = "tpt.runtime/v1"
+
+[workload]
+name = "windows-gpu"
+
+[execution]
+backend = "windows"
+program = "python.exe"
+args = ["train.py", "--epochs", "10"]
+
+[resources]
+cpu = 4
+memory = "8GiB"
+timeout_secs = 7200
+
+[network]
+mode = "none"
+
+[[devices]]
+id = "gpu:0"
+mode = "compute"
+
+[[capabilities]]
+name = "device:gpu:0"

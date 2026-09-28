@@ -5,6 +5,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+keywords = ["linux", "wsl", "process-isolation", "backend", "distro"]
+categories = ["os-apis"]
 
 [dependencies]
 tpt-runtime-capability = { workspace = true }

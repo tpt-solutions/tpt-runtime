@@ -1,0 +1,25 @@
+# A workload whose requests exceed a small host: demonstrates policy denial.
+# Run with:  tpt run --manifest examples/windows-limited.toml
+#
+# With a hard-limit policy (the default) this is denied at admission with a
+# reason naming the request and the available capacity. Under a soft-limit
+# policy it is admitted, clamped, and the adjustment is reported.
+
+api = "tpt.runtime/v1"
+
+[workload]
+name = "windows-limited"
+
+[execution]
+backend = "windows"
+program = "cmd.exe"
+args = ["/C", "echo admitted"]
+
+[resources]
+# Deliberately large: a 64-core request on a smaller host.
+cpu = 64
+memory = "64GiB"
+timeout_secs = 30
+
+[network]
+mode = "none"

@@ -24,3 +24,5 @@ pub mod bundle;
 pub mod store;
 
 pub use backend::OciBackend;
+pub use bundle::Bundle;
+pub use store::ImageStore;
