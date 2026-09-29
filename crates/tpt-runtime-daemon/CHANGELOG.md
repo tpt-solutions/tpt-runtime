@@ -16,6 +16,11 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Windows service registration for unattended startup.
 - Signal-driven shutdown on SIGTERM/SIGINT equivalents.
 
+### Changed
+
+- When GPUs are discovered at startup, the daemon also starts the GPU
+  telemetry sampler (5s period) and exposes it to the API surface.
+
 ## [0.1.0]
 
 Initial release: the Windows host daemon.

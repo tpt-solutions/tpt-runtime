@@ -1,0 +1,16 @@
+# WASM quickstart: run a sandboxed module (SPEC §14). Point `module` at a
+# `.wasm` file (or WAT text) exporting `_start`; build one from Rust with
+# `cargo build --target wasm32-wasip1` or try the runtime's own example.
+[project]
+name = "wasm-quickstart"
+
+[[workload]]
+name = "hello"
+
+[workload.manifest.execution]
+backend = "wasm"
+module = "module.wasm"
+
+[workload.manifest.resources]
+# Deterministic CPU bound: executed instructions.
+fuel = 10000000

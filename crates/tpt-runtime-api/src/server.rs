@@ -15,6 +15,8 @@ pub struct ApiState {
     pub manager: Arc<WorkloadManager>,
     pub started_at: std::time::Instant,
     pub shutdown: tokio::sync::watch::Sender<bool>,
+    /// Host GPU telemetry, when GPUs were discovered at startup.
+    pub gpu: Option<Arc<tpt_runtime_gpu::GpuTelemetry>>,
 }
 
 /// Serves the local API until a client calls `daemon.shutdown` or the
@@ -184,6 +186,7 @@ async fn route(
             "version": env!("CARGO_PKG_VERSION"),
             "uptime_secs": state.started_at.elapsed().as_secs(),
             "workloads": manager.list().len(),
+            "gpu": state.gpu.as_ref().map(|gpu| gpu.snapshot()).unwrap_or_default(),
         })),
 
         "workloads.create" => {

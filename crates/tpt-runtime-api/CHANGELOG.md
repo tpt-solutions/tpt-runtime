@@ -14,6 +14,12 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - An Archon shared-memory transport, keeping the method set unchanged.
 - Streaming log tailing over a long-lived subscription.
 
+### Added
+
+- `daemon.status` includes a `gpu` summary (per-GPU utilization, memory,
+  temperature and power samples) when the daemon discovered GPUs; `ApiState`
+  carries the telemetry handle.
+
 ## [0.1.0]
 
 Initial release: the local named-pipe JSON API.

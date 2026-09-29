@@ -12,6 +12,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 tpt-runtime-api = { workspace = true }
 tpt-runtime-config = { workspace = true }
@@ -21,3 +22,14 @@ tokio = { workspace = true }
 [[bin]]
 name = "tpt"
 path = "src/main.rs"
+
+[dev-dependencies]
+tpt-runtime-core = { workspace = true }
+tpt-runtime-device = { workspace = true }
+tpt-runtime-network = { workspace = true }
+tpt-runtime-observe = { workspace = true }
+tpt-runtime-policy = { workspace = true }
+tpt-runtime-security = { workspace = true }
+tpt-runtime-storage = { workspace = true }
+tpt-runtime-windows = { workspace = true }
+tpt-runtime-workload = { workspace = true }

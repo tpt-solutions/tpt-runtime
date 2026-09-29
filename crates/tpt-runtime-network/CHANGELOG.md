@@ -18,6 +18,9 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 - Dynamic port allocation fails explicitly with `NetworkFailure` when no
   ephemeral port can be picked, instead of handing out port 0.
+- `assign` is synchronous (std ephemeral binds): creating a workload with a
+  network intent through the daemon no longer panics by block-on-ing from
+  inside the API server's async runtime.
 
 ## [0.1.0]
 

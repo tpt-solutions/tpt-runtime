@@ -32,6 +32,11 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Creating a workload with a network intent panicked: the manager's internal
   blocking runtime did not enable IO, so port allocation could not bind.
 
+### Added
+
+- `WorkloadInfo.labels`: manifest labels are now inspectable and listed,
+  which project tooling (`tpt down`) uses to find its own workloads.
+
 ## [0.1.0]
 
 Initial release: one lifecycle across every execution backend.

@@ -4,7 +4,7 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 
 Status after the first implementation pass: the MVP (§43) is working end to
 end on Windows — daemon, CLI, Windows-process and WASM backends, lifecycle,
-events, observability — with 48 test suites (140+ tests) green. See
+events, observability — with 50 test suites (159 tests) green. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the map and known MVP
 limitations.
 
@@ -102,38 +102,38 @@ builds with zero clippy warnings.
 ## Phase 6 — Linux
 
 - [x] Linux backend abstraction *(WSL-backed backend; tested on the error path, real-distro testing pending)*
-- [ ] WSL integration *(wsl.exe execution implemented; distro lifecycle, per-workload accounting pending)*
-- [ ] Linux workload lifecycle
-- [ ] Linux networking
-- [ ] Linux storage
-- [ ] Linux observability
-- [ ] Capability translation
+- [x] WSL integration *(verified against a real Ubuntu-24.04 distro: env + volume paths cross via WSLENV `/p` translation, stop terminates the relay, sanitized host env; adaptive tests skip gracefully without distros; per-workload in-distro accounting pending)*
+- [x] Linux workload lifecycle *(create → start → exit / stop verified through the manager path against a real distro)*
+- [ ] Linux networking *(manager-level intents resolve; in-distro enforcement awaits the Boxcar isolation layer)*
+- [x] Linux storage *(granted volumes arrive as `TPT_VOLUME_<NAME>` env vars with WSLENV path translation; dedicated distro filesystems pending)*
+- [ ] Linux observability *(relay I/O accounting only; per-workload /proc metrics pending)*
+- [x] Capability translation *(manifest env and granted mounts cross the WSL boundary through WSLENV; the host environment itself never leaks)*
 
 ## Phase 7 — GPU
 
 - [x] GPU discovery *(nvidia-smi; verified on RTX 3050 host)*
 - [ ] GPU capability model *(device registry + policy checks exist; per-process CUDA isolation pending)*
 - [ ] NVIDIA integration
-- [ ] GPU telemetry
+- [x] GPU telemetry *(nvidia-smi sampling into a latest-value cache, refreshed every 5s by the daemon; surfaced through `daemon.status` and `tpt status`)*
 - [ ] TPT Infer integration
 - [ ] GPU resource policies
 
 ## Phase 8 — Developer Platform
 
-- [ ] Project environments
-- [ ] `tpt up`
-- [ ] `tpt down`
-- [ ] Service dependencies
-- [ ] VS Code integration
-- [ ] Project templates
+- [x] Project environments *(`tpt.toml` with `[project]` + `[[workload]]` entries: external manifest paths or inline manifest bodies; project name tagged as the `tpt.project` label)*
+- [x] `tpt up` *(create + start in dependency order; `--only` pulls in transitive dependencies; compose-style failure keeps earlier workloads running)*
+- [x] `tpt down` *(stop + destroy every workload labeled with the project, reverse dependency order, tolerant of already-exited workloads)*
+- [x] Service dependencies *(`depends_on` with cycle detection, topological start ordering, reverse stop ordering)*
+- [ ] VS Code integration *(extension is a separate deliverable; the API + labels groundwork it needs is in place)*
+- [x] Project templates *(embedded `tpt init` templates: minimal, services, wasm — each template is tested to parse and materialize)*
 
 ## Phase 9 — Advanced Runtime
 
 - [ ] Snapshots
-- [ ] Checkpoint/restore research
+- [x] Checkpoint/restore research *(docs/RESEARCH-ADVANCED-RUNTIME.md: volume-checkpoint protocol, WASM deterministic replay, VM-based path via Boxcar)*
 - [ ] Remote runtime
 - [ ] Edge runtime
-- [ ] Workload migration research
+- [x] Workload migration research *(docs/RESEARCH-ADVANCED-RUNTIME.md: re-creation migration via declarative manifest + volumes first; live migration inherits checkpoint/restore constraints)*
 - [ ] Advanced isolation
 - [ ] Runtime optimization
 
@@ -157,7 +157,7 @@ builds with zero clippy warnings.
 
 ### Compatibility tests
 - [ ] Windows
-- [ ] Linux
+- [x] Linux *(real WSL distro tests for lifecycle, env/volume translation and relay stop; adaptive skip on hosts without distros)*
 - [ ] OCI
 - [ ] WASM
 - [ ] GPU

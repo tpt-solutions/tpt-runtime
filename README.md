@@ -34,6 +34,17 @@ tpt devices                 # GPUs discovered via nvidia-smi
 tpt daemon stop
 ```
 
+Project environments (SPEC §34): one `tpt.toml` describes a whole project's
+workloads and their dependencies; `tpt up` starts them in dependency order,
+`tpt down` stops them in reverse.
+
+```console
+tpt init --template services    # scaffold tpt.toml (minimal, services, wasm)
+tpt up                          # start every workload, dependencies first
+tpt up --only api               # start one workload plus its dependencies
+tpt down                        # stop and destroy the project's workloads
+```
+
 Every CLI command is a client of the daemon's local API; the wire protocol (newline-delimited JSON over a named pipe) is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#6-api-protocol-30).
 
 ## Examples

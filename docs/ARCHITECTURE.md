@@ -41,7 +41,7 @@ Supporting crates:
 | --- | --- |
 | `tpt-runtime-core` | identifiers, lifecycle state machine, `RuntimeError`, `RuntimeEvent`, `ResourceUsage` (§8, §26, §28) |
 | `tpt-runtime-model` | `WorkloadSpec`, execution payloads, memory/network/device/volume models (§9, §18, §19, §25) |
-| `tpt-runtime-config` | `tpt.runtime/v1` TOML manifests, daemon settings (§31, §32, §49) |
+| `tpt-runtime-config` | `tpt.runtime/v1` TOML manifests, project environments (`tpt.toml`), daemon settings (§31–§34, §49) |
 | `tpt-runtime-capability` | typed capability grants, revocation, checks (§5.2, §23) |
 | `tpt-runtime-policy` | admission: hard/soft limits, GPU presence checks (§25) |
 | `tpt-runtime-process` | `ExecutionBackend` / `WorkloadInstance` traits, log capture (§10) |
@@ -52,7 +52,7 @@ Supporting crates:
 | `tpt-runtime-storage` | logical volumes over host directories (§15) |
 | `tpt-runtime-network` | network intents and port allocation (§18) |
 | `tpt-runtime-device` | logical device registry, claims (§19) |
-| `tpt-runtime-gpu` | NVIDIA discovery via `nvidia-smi` (§20) |
+| `tpt-runtime-gpu` | NVIDIA discovery and telemetry via `nvidia-smi` (§20) |
 | `tpt-runtime-ipc` | request/response envelope, NDJSON framing (§22, §30) |
 | `tpt-runtime-security` | capability-gated secret store (§24) |
 | `tpt-runtime-observe` | event hub (broadcast + JSONL), metrics registry (§27, §28) |
@@ -200,4 +200,21 @@ subscribe}`, `volumes.{create,list,remove}`, `devices.list`,
 | Security: secret leakage | value absent from inspect/list/events/logs e2e; capability-gated resolve |
 | Security: device access | exclusive conflicts, availability, policy denial of absent GPUs |
 | Security: WASM sandbox | `wasm/tests/adversarial.rs` (env scoping, escape, growth, foreign imports, wall-clock kill) |
+| Developer platform | `tpt up`/`down` over a real pipe (`cli` project_ops e2e); project parsing (`config` project tests) |
+| Linux → WSL | real-distro tests in `linux/src/backend.rs` (env + volume translation, relay stop; adaptive skip without distros) |
+| GPU telemetry | sampling + cache (`gpu/src/telemetry.rs`); surfaced through `daemon.status` |
 | Malformed manifests | `config` negative tests |
+
+## 8. Developer platform (§33–§34)
+
+`tpt.toml` (parsed by `tpt-runtime-config::project`) declares a project's
+workloads — each referencing an external `tpt.runtime/v1` manifest or an
+inline manifest body — plus `depends_on` edges. The CLI stays a pure API
+client: `tpt up` materializes each manifest (the project entry's name is
+authoritative, and the workload is labeled `tpt.project = <name>`), then
+creates and starts them in dependency order through the daemon;
+`tpt down` stops and destroys everything carrying the project's label in
+reverse order. `tpt init` scaffolds a project from built-in templates
+(minimal, services, wasm). Workload surfaces already built on this:
+duplicate-name protection, port allocation and release, and the labels
+field on `WorkloadInfo`.

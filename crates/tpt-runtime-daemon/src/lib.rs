@@ -32,22 +32,30 @@ pub async fn run(config: DaemonConfig) -> Result<()> {
     let devices = Arc::new(Mutex::new(DeviceRegistry::new()));
     let secrets = Arc::new(Mutex::new(SecretStore::open(config.secrets_file())?));
 
-    // GPU discovery (SPEC §20): absent NVIDIA stack is not an error.
-    match tpt_runtime_gpu::discover_gpus() {
+    // GPU discovery + telemetry (SPEC §20): absent NVIDIA stack is not an
+    // error; hosts without one simply have no GPU devices or telemetry.
+    let gpu_telemetry = match tpt_runtime_gpu::discover_gpus() {
         Ok(gpus) if gpus.is_empty() => {
             eprintln!("[daemon] no GPUs discovered");
+            None
         }
         Ok(gpus) => {
-            let mut registry = devices.lock().unwrap();
-            for gpu in gpus {
-                eprintln!("[daemon] discovered gpu:{}: {}", gpu.index, gpu.name);
-                registry.register(gpu.as_device());
+            {
+                let mut registry = devices.lock().unwrap();
+                for gpu in gpus {
+                    eprintln!("[daemon] discovered gpu:{}: {}", gpu.index, gpu.name);
+                    registry.register(gpu.as_device());
+                }
             }
+            Some(tpt_runtime_gpu::GpuTelemetry::spawn(
+                std::time::Duration::from_secs(5),
+            ))
         }
         Err(err) => {
             eprintln!("[daemon] GPU discovery failed: {err}");
+            None
         }
-    }
+    };
 
     let manager = Arc::new(WorkloadManager::new(
         config.logs_dir(),
@@ -80,6 +88,7 @@ pub async fn run(config: DaemonConfig) -> Result<()> {
         manager,
         started_at: std::time::Instant::now(),
         shutdown: shutdown_tx,
+        gpu: gpu_telemetry,
     });
 
     // Ctrl+C triggers the same shutdown path as daemon.shutdown.

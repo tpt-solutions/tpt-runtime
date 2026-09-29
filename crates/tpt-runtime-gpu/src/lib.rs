@@ -9,5 +9,7 @@
 //! GPUs (that is discovery, not failure — SPEC §48 distinguishes the two).
 
 pub mod discover;
+pub mod telemetry;
 
 pub use discover::{discover_gpus, GpuInfo};
+pub use telemetry::{sample_gpus, GpuSample, GpuTelemetry};

@@ -35,6 +35,9 @@ pub struct WorkloadInfo {
     pub killed: bool,
     /// Granted capability names (SPEC §23: inspectable).
     pub capabilities: Vec<String>,
+    /// Free-form labels from the manifest (project tagging uses
+    /// `tpt.project`, see `tpt-runtime-config::project`).
+    pub labels: BTreeMap<String, String>,
     /// Granted network mode.
     pub network_mode: String,
     /// Allocated inbound ports (`name → host port`).

@@ -7,8 +7,11 @@
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use serde_json::Value;
+use std::path::Path;
 use tpt_runtime_api::ApiClient;
-use tpt_runtime_config::{DaemonConfig, DEFAULT_PIPE_NAME};
+use tpt_runtime_config::{DaemonConfig, Project, DEFAULT_PIPE_NAME};
+
+mod project_ops;
 
 #[derive(Parser)]
 #[command(
@@ -75,6 +78,30 @@ enum Command {
     Secret {
         #[command(subcommand)]
         action: SecretAction,
+    },
+    /// Scaffold a project environment from a template (SPEC §33).
+    Init {
+        /// Template to scaffold: minimal, services or wasm.
+        #[arg(long, default_value = "minimal")]
+        template: String,
+        /// Overwrite an existing tpt.toml.
+        #[arg(long)]
+        force: bool,
+    },
+    /// Start a project's workloads in dependency order (SPEC §34).
+    Up {
+        /// Project file (defaults to ./tpt.toml).
+        #[arg(long = "file", value_name = "FILE")]
+        file: Option<String>,
+        /// Start only this workload and its dependencies.
+        #[arg(long)]
+        only: Option<String>,
+    },
+    /// Stop and destroy a project's workloads in reverse dependency order.
+    Down {
+        /// Project file (defaults to ./tpt.toml).
+        #[arg(long = "file", value_name = "FILE")]
+        file: Option<String>,
     },
 }
 
@@ -225,6 +252,15 @@ async fn dispatch(cli: Cli) -> Result<()> {
                 status["workloads"].as_u64().unwrap_or(0),
                 config.pipe_name
             );
+            for gpu in status["gpu"].as_array().cloned().unwrap_or_default() {
+                println!(
+                    "  gpu:{}  util {}%  mem {}/{} MiB",
+                    gpu["index"].as_u64().unwrap_or(0),
+                    gpu["utilization_pct"].as_f64().unwrap_or(0.0),
+                    gpu["memory_used_mib"].as_u64().unwrap_or(0),
+                    gpu["memory_total_mib"].as_u64().unwrap_or(0),
+                );
+            }
             Ok(())
         }
         Command::Run(run) => {
@@ -550,7 +586,55 @@ async fn dispatch(cli: Cli) -> Result<()> {
                 }
             }
         }
+        Command::Init { template, force } => init_project(&template, force),
+        Command::Up { file, only } => {
+            let project = load_project(file.as_deref())?;
+            let mut client = ApiClient::connect(&config).await?;
+            let started = project_ops::up(&mut client, &project, only.as_deref()).await?;
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&started)?);
+            }
+            Ok(())
+        }
+        Command::Down { file } => {
+            let project = load_project(file.as_deref())?;
+            let mut client = ApiClient::connect(&config).await?;
+            project_ops::down(&mut client, &project).await?;
+            Ok(())
+        }
     }
+}
+
+/// Loads the project file for `tpt up` / `tpt down`.
+fn load_project(file: Option<&str>) -> Result<Project> {
+    let path = match file {
+        Some(file) => std::path::PathBuf::from(file),
+        None => std::path::PathBuf::from("tpt.toml"),
+    };
+    Project::load(&path).map_err(|err| anyhow::anyhow!("{err:#}"))
+}
+
+/// Scaffolds a `tpt.toml` from a built-in template (SPEC §33 `tpt init`).
+fn init_project(template: &str, force: bool) -> Result<()> {
+    let text = match template {
+        "minimal" => include_str!("templates/tpt-minimal.toml"),
+        "services" => include_str!("templates/tpt-services.toml"),
+        "wasm" => include_str!("templates/tpt-wasm.toml"),
+        other => bail!("unknown template '{other}' (choose minimal, services or wasm)"),
+    };
+    let path = Path::new("tpt.toml");
+    if path.exists() && !force {
+        bail!("tpt.toml already exists here (use --force to overwrite)");
+    }
+    std::fs::write(path, text).context("cannot write tpt.toml")?;
+    println!("created tpt.toml (template '{template}')");
+    match template {
+        "wasm" => {
+            println!("next: place a module at ./module.wasm, then 'tpt daemon start' and 'tpt up'")
+        }
+        _ => println!("next: 'tpt daemon start', then 'tpt up'"),
+    }
+    Ok(())
 }
 
 fn start_daemon(state_dir: Option<String>, pipe: Option<String>) -> Result<()> {

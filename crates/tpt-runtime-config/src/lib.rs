@@ -35,6 +35,8 @@
 
 pub mod daemon;
 pub mod manifest;
+pub mod project;
 
 pub use daemon::{DaemonConfig, DEFAULT_PIPE_NAME};
 pub use manifest::{Manifest, MANIFEST_API_VERSION};
+pub use project::{materialize, Project, ProjectWorkload, PROJECT_LABEL};

@@ -54,6 +54,7 @@ impl WorkloadRecord {
             exit_code: self.exit.as_ref().and_then(|e| e.code),
             killed: self.exit.as_ref().map(|e| e.killed).unwrap_or(false),
             capabilities: self.capabilities.grants().map(|g| g.name()).collect(),
+            labels: self.spec.labels.clone(),
             network_mode: self
                 .network
                 .as_ref()
@@ -197,7 +198,7 @@ impl WorkloadManager {
         let network = if spec.network.mode == tpt_runtime_model::network::NetworkMode::None {
             None
         } else {
-            Some(block_on(self.network.assign(&spec.name, &spec.network))?)
+            Some(self.network.assign(&spec.name, &spec.network)?)
         };
 
         // Capabilities: explicit grants only (SPEC §5.2).
@@ -679,14 +680,4 @@ fn not_found(id: &WorkloadId) -> RuntimeError {
 
 fn not_found_str(id: &str) -> RuntimeError {
     RuntimeError::new(ErrorKind::NotFound, format!("workload '{id}' not found"))
-}
-
-/// Blocking on bounded async work (network assignment) from sync paths.
-/// IO must be enabled: network assignment binds ephemeral listeners.
-fn block_on<T>(future: impl std::future::Future<Output = T>) -> T {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("temporary runtime")
-        .block_on(future)
 }

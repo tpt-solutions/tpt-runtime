@@ -14,6 +14,14 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Validation of volume names against the logical-name rules, so a bad name is
   caught at parse time rather than at mount time.
 
+### Added
+
+- Project environments (SPEC §34): `tpt.toml` parsing (`project::Project`)
+  with `[project]` naming, `[[workload]]` entries referencing external
+  manifests or inline manifest bodies, `depends_on` edges with cycle
+  detection, topological `start_order` / reverse `stop_order`, and
+  `materialize` (authoritative entry name + `tpt.project` label).
+
 ## [0.1.0]
 
 Initial release: declarative configuration for workloads and the daemon.

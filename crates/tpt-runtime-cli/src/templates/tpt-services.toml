@@ -1,0 +1,29 @@
+# Two workloads with a service dependency: `api` starts only after
+# `database` is running, and exposes an http port through the service
+# network intent (SPEC §18). The runtime picks a free host port for `http`
+# (0 = dynamic) and `tpt inspect api` shows where it landed.
+[project]
+name = "two-services"
+
+[[workload]]
+name = "database"
+
+[workload.manifest.execution]
+backend = "windows"
+program = "ping.exe"
+args = ["-n", "3600", "127.0.0.1"]
+
+[[workload]]
+name = "api"
+depends_on = ["database"]
+
+[workload.manifest.network]
+mode = "service"
+
+[workload.manifest.network.expose]
+http = 0
+
+[workload.manifest.execution]
+backend = "windows"
+program = "ping.exe"
+args = ["-n", "3600", "127.0.0.1"]

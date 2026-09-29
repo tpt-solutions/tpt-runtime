@@ -15,6 +15,17 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - `tpt wait`, blocking until a workload reaches a given state.
 - Config file or environment defaults for the state directory and pipe.
 
+### Added
+
+- Developer platform commands (SPEC §33–§34): `tpt init` scaffolding from
+  built-in templates (minimal, services, wasm), `tpt up` (dependency-ordered
+  create + start, `--only` for one workload and its dependencies) and
+  `tpt down` (reverse-order stop + destroy by project label).
+- `tpt status` prints a per-GPU utilization/memory summary when the daemon
+  discovered GPUs.
+- End-to-end tests driving `up`/`down` over a real named pipe against a
+  live manager stack.
+
 ## [0.1.0]
 
 Initial release: the `tpt` developer CLI.

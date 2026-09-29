@@ -52,12 +52,12 @@ impl NetworkManager {
     /// Rejects `expose` entries for modes that cannot accept inbound
     /// traffic (SPEC §48: explicit failure, not silent degradation) and
     /// refuses statically requested ports that are already in use.
-    pub async fn assign(&self, workload: &str, spec: &NetworkSpec) -> Result<NetworkAssignment> {
+    pub fn assign(&self, workload: &str, spec: &NetworkSpec) -> Result<NetworkAssignment> {
         let mut ports = Vec::new();
         if spec.mode.allows_inbound() {
             for (name, requested) in &spec.expose {
                 let (host_port, static_port) = if *requested == 0 {
-                    let picked = self.pick_free_port().await;
+                    let picked = self.pick_free_port();
                     if picked == 0 {
                         return Err(RuntimeError::new(
                             ErrorKind::NetworkFailure,
@@ -118,11 +118,11 @@ impl NetworkManager {
         Ok(())
     }
 
-    async fn pick_free_port(&self) -> u16 {
+    fn pick_free_port(&self) -> u16 {
         // Try a few ephemeral binds; the OS guarantees liveness of the pick
         // until the listener drops, which happens before the workload binds.
         for _ in 0..32 {
-            if let Ok(listener) = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await {
+            if let Ok(listener) = std::net::TcpListener::bind(("127.0.0.1", 0)) {
                 if let Ok(addr) = listener.local_addr() {
                     drop(listener);
                     let port = addr.port();
@@ -154,15 +154,14 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn none_mode_has_no_ports() {
+    #[test]
+    fn none_mode_has_no_ports() {
         let manager = NetworkManager::new();
         let assignment = manager
             .assign(
                 "w",
                 &spec(tpt_runtime_model::network::NetworkMode::None, &[]),
             )
-            .await
             .unwrap();
         assert_eq!(
             assignment.mode,
@@ -171,8 +170,8 @@ mod tests {
         assert!(assignment.ports.is_empty());
     }
 
-    #[tokio::test]
-    async fn service_mode_allocates_requested_and_dynamic_ports() {
+    #[test]
+    fn service_mode_allocates_requested_and_dynamic_ports() {
         let manager = NetworkManager::new();
         let assignment = manager
             .assign(
@@ -182,7 +181,6 @@ mod tests {
                     &[("http", 8080), ("metrics", 0)],
                 ),
             )
-            .await
             .unwrap();
         assert_eq!(assignment.ports.len(), 2);
         let http = assignment.ports.iter().find(|p| p.name == "http").unwrap();
@@ -206,13 +204,12 @@ mod tests {
                     &[("http", 8080)],
                 ),
             )
-            .await
             .unwrap();
         assert_eq!(again.ports[0].host_port, 8080);
     }
 
-    #[tokio::test]
-    async fn duplicate_static_port_fails_explicitly() {
+    #[test]
+    fn duplicate_static_port_fails_explicitly() {
         let manager = NetworkManager::new();
         let first = manager
             .assign(
@@ -222,7 +219,6 @@ mod tests {
                     &[("http", 9000)],
                 ),
             )
-            .await
             .unwrap();
         let err = manager
             .assign(
@@ -232,14 +228,13 @@ mod tests {
                     &[("http", 9000)],
                 ),
             )
-            .await
             .unwrap_err();
         assert_eq!(err.kind, ErrorKind::NetworkFailure);
         manager.release(&first);
     }
 
-    #[tokio::test]
-    async fn expose_without_inbound_mode_fails() {
+    #[test]
+    fn expose_without_inbound_mode_fails() {
         let manager = NetworkManager::new();
         let err = manager
             .assign(
@@ -249,7 +244,6 @@ mod tests {
                     &[("http", 80)],
                 ),
             )
-            .await
             .unwrap_err();
         assert_eq!(err.kind, ErrorKind::NetworkFailure);
     }

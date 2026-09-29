@@ -1,0 +1,13 @@
+# tpt project environment (SPEC §34): `tpt up` starts everything in
+# dependency order, `tpt down` stops it again. Requires a running daemon
+# (`tpt daemon start`).
+[project]
+name = "hello-tpt"
+
+[[workload]]
+name = "hello"
+
+[workload.manifest.execution]
+backend = "windows"
+program = "cmd.exe"
+args = ["/C", "echo hello from tpt"]

@@ -16,6 +16,12 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   reboots.
 - Multi-GPU topologies and interconnect (NVLink) reporting.
 
+### Added
+
+- GPU telemetry (SPEC §20): `sample_gpus` (utilization, memory, temperature,
+  power via `nvidia-smi`), `GpuSample`, and `GpuTelemetry` — a latest-value
+  cache refreshed by a background sampler, tolerant of failed polls.
+
 ## [0.1.0]
 
 Initial release: NVIDIA discovery via `nvidia-smi`.
