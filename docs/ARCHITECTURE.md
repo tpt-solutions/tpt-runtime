@@ -102,6 +102,9 @@ The state machine itself (which transitions are legal) lives in
 - **Secrets** never enter environment variables by default; values are
   released only against the matching `secret:<name>` capability, and list
   endpoints expose names only.
+- **Device claims** follow the workload lifecycle: exclusive conflicts deny
+  attach (create) and re-attach (start) loudly, and claims are released when
+  a workload settles or is destroyed.
 - **Denial is loud** (SPEC §48): missing GPU, unknown volume, unsatisfiable
   limits, and unregistered backends are errors with attribution
   (`workload → backend → operation`), never silent downgrades.
@@ -182,8 +185,19 @@ subscribe}`, `volumes.{create,list,remove}`, `devices.list`,
 | Identifiers / events | `core/src/{id,event}.rs` tests |
 | runtime → Windows process | `windows` unit tests + `workload/tests/manager_e2e.rs` |
 | runtime → WASM | `wasm/tests/wasi.rs` (hello, fuel, stop, validation) |
-| runtime → OCI | `oci` store/bundle/backend tests (start = explicit pending) |
+| runtime → OCI | `oci` store/bundle/backend tests + `oci/tests/malicious_image.rs` (start = explicit pending) |
 | Failure: workload crashes | watcher → `workload.failed` (e2e) |
-| Failure: runtime restart | kill-on-close job semantics (design-verified) |
+| Failure: runtime restart | `windows` job tests: dropping the last job handle reaps the workload |
+| Failure: resource exhaustion | WASM fuel + adversarial growth (`wasm/tests/adversarial.rs`); OS-level commit limit (`windows` job tests) |
+| Failure: device disappearance | `workload/tests/security_isolation.rs` (unplug → attach denial, re-plug) |
+| Failure: network failure | port conflicts and allocation guard (`workload/tests/security_isolation.rs`, `network` unit tests) |
+| Failure: storage failure | missing/deleted volumes, corrupt metadata (`workload/tests/security_isolation.rs`, `storage` unit tests) |
 | Capability denial | `capability` require/check tests |
+| Security: capability escalation | grants are exactly the manifest set (`workload/tests/security_isolation.rs`) |
+| Security: filesystem escape | WASI preopen escape + read-only enforcement (`wasm/tests/adversarial.rs`); bundle entry-point traversal (`oci/tests/malicious_image.rs`) |
+| Security: process isolation | per-workload job objects; stopping one leaves siblings intact |
+| Security: network isolation | deny-by-default intents; WASM fd least-privilege; port lifecycle |
+| Security: secret leakage | value absent from inspect/list/events/logs e2e; capability-gated resolve |
+| Security: device access | exclusive conflicts, availability, policy denial of absent GPUs |
+| Security: WASM sandbox | `wasm/tests/adversarial.rs` (env scoping, escape, growth, foreign imports, wall-clock kill) |
 | Malformed manifests | `config` negative tests |

@@ -15,6 +15,18 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - A shared `tpt-boxcar` WASM service layer so plugins across TPT projects get
   identical sandbox semantics.
 
+### Changed
+
+- Wall-clock timeouts now report `killed = true`, matching fuel exhaustion
+  and explicit stops: a timed-out workload is runtime-interrupted, not
+  crashed.
+
+### Added
+
+- Adversarial sandbox suite (SPEC §46): manifest-scoped environment, preopen
+  escape attempts and fd least-privilege, read-only enforcement, fuel-bounded
+  memory growth, foreign import refusal and wall-clock kills.
+
 ## [0.1.0]
 
 Initial release: wasmtime + WASI preview 1 execution.

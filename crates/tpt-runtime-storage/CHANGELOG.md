@@ -15,6 +15,11 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   backend enforcement and policy.
 - Volume quota and usage reporting per volume.
 
+### Added
+
+- Corrupt `volume.json` metadata fails `StorageManager::open` loudly instead
+  of dropping the volume silently (SPEC §45 storage failure, §48).
+
 ## [0.1.0]
 
 Initial release: directory-backed logical volumes.

@@ -16,6 +16,20 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Bundle configuration assembly from the workload model (env, mounts,
   capabilities) rather than only validating what was seeded.
 
+### Fixed
+
+- `ImageStore::resolve` validates the digest read from a tag file before it
+  touches a path, so a poisoned ref cannot point outside the blob store.
+  Stored refs accept both the bare hex form written by `tag` and the
+  `sha256:`-prefixed form.
+- `Bundle::validate` rejects Windows-style entry points (backslashes,
+  drive-letter colons) in addition to absolute paths and `..` traversal.
+
+### Added
+
+- Malicious image test suite (SPEC §46): poisoned tags, malformed digests,
+  rootfs-less blobs and hostile bundle entry points.
+
 ## [0.1.0]
 
 Initial release: OCI references, content store and bundle preparation.

@@ -104,7 +104,11 @@ impl ImageStore {
                 ),
             )
         })?;
-        let blob = self.root.join("blobs").join("sha256").join(digest.trim());
+        // The ref file is untrusted input: validate before it touches a
+        // path, so a poisoned tag cannot point outside the blob store.
+        // Tags store the bare hex; accept the prefixed form too.
+        let digest = validate_stored_digest(&digest)?;
+        let blob = self.root.join("blobs").join("sha256").join(&digest);
         if !blob.join("rootfs").is_dir() {
             return Err(RuntimeError::new(
                 ErrorKind::NotFound,
@@ -117,7 +121,7 @@ impl ImageStore {
             ));
         }
         Ok(Bundle {
-            id: digest.trim().chars().take(16).collect(),
+            id: digest.chars().take(16).collect(),
             path: blob,
             args: vec![],
             env: BTreeMap::new(),
@@ -138,6 +142,21 @@ fn validate_digest(digest: &str) -> Result<String> {
         return Err(RuntimeError::new(
             ErrorKind::InvalidConfiguration,
             format!("malformed sha256 digest '{digest}'"),
+        ));
+    }
+    Ok(hex.to_ascii_lowercase())
+}
+
+/// Validates a digest as read back from a ref file: the bare hex written
+/// by [`ImageStore::tag`] and the full `sha256:...` form are both legal;
+/// anything else (including path traversal) is rejected.
+fn validate_stored_digest(raw: &str) -> Result<String> {
+    let raw = raw.trim();
+    let hex = raw.strip_prefix("sha256:").unwrap_or(raw);
+    if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(RuntimeError::new(
+            ErrorKind::InvalidConfiguration,
+            format!("malformed digest in image ref: '{raw}'"),
         ));
     }
     Ok(hex.to_ascii_lowercase())

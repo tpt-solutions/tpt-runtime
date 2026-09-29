@@ -16,6 +16,22 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   once capacity is reclaimable.
 - Workload dependencies, so a workload can be gated on another's health.
 
+### Added
+
+- Security isolation suite (SPEC §46): environment sanitization, secret
+  non-leakage across every manager surface, exact capability grants, device
+  claim conflicts/disappearance/release, process isolation, deny-by-default
+  networking with port lifecycle, and loud volume/backend/overcommit
+  failures.
+
+### Fixed
+
+- Device claims are released when a workload settles or is destroyed and
+  re-attached on every start: an exclusively claimed device frees up once
+  its workload finishes, and a conflicting claim now fails the start loudly.
+- Creating a workload with a network intent panicked: the manager's internal
+  blocking runtime did not enable IO, so port allocation could not bind.
+
 ## [0.1.0]
 
 Initial release: one lifecycle across every execution backend.

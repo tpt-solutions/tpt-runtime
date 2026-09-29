@@ -14,6 +14,11 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Per-workload bandwidth accounting and inbound connection tracking.
 - IPv6 and host-name based exposure in addition to host ports.
 
+### Fixed
+
+- Dynamic port allocation fails explicitly with `NetworkFailure` when no
+  ephemeral port can be picked, instead of handing out port 0.
+
 ## [0.1.0]
 
 Initial release: turning network intent into concrete port allocations.

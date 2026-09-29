@@ -278,6 +278,28 @@ impl WorkloadManager {
             records.get(id).and_then(|r| r.network.clone())
         };
 
+        // Devices are claimed per run: drop this workload's stale claims and
+        // re-attach, so a device another workload claimed exclusively while
+        // this one was stopped fails the start loudly (SPEC §19, §48).
+        // Lock order note: the devices guard is dropped before records is
+        // taken (destroy takes them the other way around).
+        for device in &spec.devices {
+            let attach = {
+                let mut devices = self.devices.lock().unwrap();
+                devices.release_workload(&spec.name);
+                devices.attach(&spec.name, &device.id, device.mode)
+            };
+            if let Err(err) = attach {
+                let mut records = self.records.lock().unwrap();
+                if let Some(record) = records.get_mut(id) {
+                    record.state = WorkloadState::Failed;
+                    record.finished_at = Some(Timestamp::now());
+                }
+                self.emit(EventKind::WorkloadFailed, id);
+                return Err(err);
+            }
+        }
+
         let backend = self.backend(spec.backend())?;
 
         let instance = match backend.start(&spec, &ctx) {
@@ -330,7 +352,7 @@ impl WorkloadManager {
         }
 
         self.emit(EventKind::WorkloadStarted, id);
-        self.spawn_watcher(id.clone(), instance, network);
+        self.spawn_watcher(id.clone(), spec.name.clone(), instance, network);
         Ok(())
     }
 
@@ -454,6 +476,12 @@ impl WorkloadManager {
             )
             .with_workload(id.clone()));
         }
+        // A workload that never started (or failed before its watcher ran)
+        // may still hold device claims from create; drop them here too.
+        self.devices
+            .lock()
+            .unwrap()
+            .release_workload(&record.spec.name);
         record.state = WorkloadState::Destroyed;
         self.emit(EventKind::WorkloadDestroyed, id);
         self.metrics.remove(id);
@@ -583,12 +611,14 @@ impl WorkloadManager {
     fn spawn_watcher(
         &self,
         id: WorkloadId,
+        name: String,
         instance: Arc<dyn WorkloadInstance>,
         network: Option<NetworkAssignment>,
     ) {
         let events = self.events.clone();
         let metrics = self.metrics.clone();
         let network_manager = self.network.clone();
+        let devices = self.devices.clone();
         let records = self.records.clone();
 
         std::thread::spawn(move || {
@@ -603,6 +633,9 @@ impl WorkloadManager {
             }
             if let Some(network) = network {
                 network_manager.release(&network);
+            }
+            if let Ok(mut devices) = devices.lock() {
+                devices.release_workload(&name);
             }
             if let Ok(mut guard) = records.lock() {
                 if let Some(record) = guard.get_mut(&id) {
@@ -649,8 +682,10 @@ fn not_found_str(id: &str) -> RuntimeError {
 }
 
 /// Blocking on bounded async work (network assignment) from sync paths.
+/// IO must be enabled: network assignment binds ephemeral listeners.
 fn block_on<T>(future: impl std::future::Future<Output = T>) -> T {
     tokio::runtime::Builder::new_current_thread()
+        .enable_all()
         .build()
         .expect("temporary runtime")
         .block_on(future)

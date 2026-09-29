@@ -14,6 +14,13 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Per-process (not only per-job) CPU attribution in `ResourceUsage`.
 - Windows sandboxing beyond Job Objects, via `tpt-boxcar` primitives.
 
+### Added
+
+- Job-object tests (SPEC §45): kill-on-close reaps the workload when the
+  last handle drops (runtime restart safety), and a per-process commit
+  ceiling starves an allocating workload while an unlimited control keeps
+  running (OS-level resource exhaustion).
+
 ## [0.1.0]
 
 Initial release: native Windows process execution.

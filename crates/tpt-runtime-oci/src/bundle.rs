@@ -62,9 +62,11 @@ impl Bundle {
     }
 }
 
-/// Rootfs path check: rejects absolute entries and `..` traversal.
+/// Rootfs path check: rejects absolute entries, `..` traversal and
+/// Windows-style paths (backslashes, drive-letter colons). OCI entry
+/// points are POSIX-style paths inside the rootfs.
 fn sanitize_rootfs_entry(_rootfs: &Path, entry: &str) -> bool {
-    if entry.starts_with('/') {
+    if entry.starts_with('/') || entry.contains('\\') || entry.contains(':') {
         return false;
     }
     let mut depth: i64 = 0;

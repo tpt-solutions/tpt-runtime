@@ -4,7 +4,7 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 
 Status after the first implementation pass: the MVP (§43) is working end to
 end on Windows — daemon, CLI, Windows-process and WASM backends, lifecycle,
-events, observability — with 46 test suites green. See
+events, observability — with 48 test suites (140+ tests) green. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the map and known MVP
 limitations.
 
@@ -151,7 +151,7 @@ builds with zero clippy warnings.
 ### Integration tests
 - [x] runtime → Windows process
 - [x] runtime → WASM
-- [ ] runtime → OCI
+- [x] runtime → OCI *(store/bundle/backend plus the malicious-image suite; `start` itself awaits Boxcar)*
 - [ ] runtime → Archon
 - [ ] runtime → Boxcar
 
@@ -166,23 +166,23 @@ builds with zero clippy warnings.
 
 ### Failure tests
 - [x] Workload crashes *(watcher → `workload.failed`, killed-vs-crash attribution)*
-- [ ] Resource exhaustion *(WASM fuel exhaustion covered in wasm tests; OS-level limits pending)*
-- [x] Capability denial *(unit level; backend enforcement tests pending)*
-- [ ] Device disappearance
-- [ ] Network failure
-- [ ] Storage failure
-- [ ] Runtime restart *(kill-on-close job semantics design-verified; scripted test pending)*
+- [x] Resource exhaustion *(WASM fuel + adversarial memory growth; OS-level commit limit via job objects with an unlimited control workload)*
+- [x] Capability denial *(unit level; WASM backend enforcement covered in the adversarial suite — native fs/net stays policy+audit by design)*
+- [x] Device disappearance *(unplug → attach denial for new workloads, re-plug restores, existing claims untouched)*
+- [x] Network failure *(static port conflicts, explicit failure when no ephemeral port is pickable, expose-mode validation)*
+- [x] Storage failure *(missing/deleted volume backing dirs, corrupt `volume.json` fails open loudly, non-empty removal refusal)*
+- [x] Runtime restart *(scripted: dropping the last job handle reaps the workload without an explicit stop)*
 - [ ] Host restart
 
 ## Security Testing (§46)
 
-- [ ] Capability escalation tests
-- [ ] Filesystem escape tests *(bundle rootfs escape checks exist; runtime-level tests pending)*
-- [ ] Process isolation tests
-- [ ] Network isolation tests
-- [ ] Secret leakage tests *(listing redaction covered in security tests; e2e pending)*
-- [ ] Device access tests
+- [x] Capability escalation tests *(grants are exactly the manifest set; rw mounts add no filesystem.write; unknown grants carried for audit; missing secret/GPU/overcommit denied at create)*
+- [x] Filesystem escape tests *(WASI preopen escape attempts + fd least-privilege + read-only enforcement; bundle entry-point traversal incl. Windows-style paths; volume name validation)*
+- [x] Process isolation tests *(per-workload job objects: stopping one workload leaves siblings running to a clean exit; env is sanitized, not inherited)*
+- [x] Network isolation tests *(deny-by-default intents with no network events; port conflict + release lifecycle; WASM exposes no fds beyond granted preopens)*
+- [x] Secret leakage tests *(e2e: value absent from inspect, list, events and workload logs; resolution capability-gated; unknown secret denies create)*
+- [x] Device access tests *(exclusive conflict at create, shared compute allowed, claims released on settle/destroy, policy denies undiscovered GPU indices)*
 - [x] Malformed manifest tests
-- [ ] Malicious image tests
-- [ ] WASM sandbox tests *(sandbox mechanics tested; adversarial module suite pending)*
-- [ ] OCI isolation tests
+- [x] Malicious image tests *(poisoned tag files cannot traverse the store, malformed digests rejected, rootfs-less blobs unresolved, hostile entry points incl. Windows paths)*
+- [x] WASM sandbox tests *(adversarial suite: manifest-scoped env, preopen escape, fuel-bounded memory growth, foreign import refusal, wall-clock kill)*
+- [ ] OCI isolation tests *(store/bundle containment covered; workload isolation boundary awaits Boxcar)*

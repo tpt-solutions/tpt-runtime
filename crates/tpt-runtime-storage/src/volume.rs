@@ -292,4 +292,20 @@ mod tests {
         assert_eq!(err.kind, ErrorKind::NotFound);
         std::fs::remove_dir_all(&base).unwrap();
     }
+
+    #[test]
+    fn corrupt_volume_metadata_fails_reload() {
+        let base = temp_base();
+        // A torn or tampered volume.json is a loud storage failure, not a
+        // silently dropped volume (SPEC §48).
+        std::fs::create_dir_all(base.join("broken")).unwrap();
+        std::fs::write(base.join("broken").join("volume.json"), "{not json").unwrap();
+        let err = match StorageManager::open(&base) {
+            Err(err) => err,
+            Ok(_) => panic!("corrupt volume metadata must fail the open"),
+        };
+        assert_eq!(err.kind, ErrorKind::StorageFailure);
+        assert!(err.message.contains("corrupt volume metadata"));
+        std::fs::remove_dir_all(&base).ok();
+    }
 }

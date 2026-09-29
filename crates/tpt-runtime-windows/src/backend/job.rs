@@ -220,4 +220,96 @@ mod tests {
         let usage = job.query_usage().unwrap();
         assert_eq!(usage.process_count, 0);
     }
+
+    /// SPEC §45/§46 failure + isolation: when the runtime loses its handle
+    /// (daemon crash, instance drop), KILL_ON_JOB_CLOSE must reap the
+    /// workload without an explicit stop.
+    #[test]
+    fn kill_on_close_reaps_when_last_handle_drops() {
+        use std::os::windows::io::AsRawHandle;
+        use std::process::{Command, Stdio};
+
+        let job = JobObject::with_memory_limit(None).unwrap();
+        let mut child = Command::new("ping.exe")
+            .args(["-n", "60", "127.0.0.1"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        job.assign_process(child.as_raw_handle()).unwrap();
+
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(job.query_usage().unwrap().process_count, 1);
+
+        drop(job);
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        loop {
+            if child.try_wait().unwrap().is_some() {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "workload process outlived its job object"
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        // ping -n 60 cannot finish in 10s: the death above is the
+        // kill-on-close. (Windows reports exit code 0 for this path, so
+        // the code itself is not asserted.)
+    }
+
+    /// SPEC §45 resource exhaustion at the OS level: a per-process commit
+    /// ceiling makes an allocating workload die while an unlimited control
+    /// workload keeps running.
+    #[test]
+    fn process_memory_limit_starves_allocating_workload() {
+        use std::os::windows::io::AsRawHandle;
+        use std::process::{Command, Stdio};
+
+        let spawn_under = |job: &JobObject| {
+            let child = Command::new("powershell.exe")
+                .args([
+                    "-NoProfile",
+                    "-Command",
+                    "$b = New-Object byte[] 67108864; Start-Sleep -Seconds 60",
+                ])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .unwrap();
+            job.assign_process(child.as_raw_handle()).unwrap();
+            child
+        };
+
+        let limited = JobObject::with_memory_limit(Some(32 * 1024 * 1024)).unwrap();
+        let mut starved = spawn_under(&limited);
+        let generous = JobObject::with_memory_limit(None).unwrap();
+        let mut control = spawn_under(&generous);
+
+        // The control workload (same command, no commit ceiling) survives.
+        std::thread::sleep(Duration::from_secs(5));
+        assert!(
+            control.try_wait().unwrap().is_none(),
+            "unlimited control workload died unexpectedly"
+        );
+
+        // The 32 MiB ceiling kills the 64 MiB allocator quickly.
+        let deadline = std::time::Instant::now() + Duration::from_secs(60);
+        let status = loop {
+            if let Some(status) = starved.try_wait().unwrap() {
+                break status;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "process memory limit was not enforced"
+            );
+            std::thread::sleep(Duration::from_millis(100));
+        };
+        assert_ne!(status.code(), Some(0), "OOM death is not a clean exit");
+
+        limited.terminate(1).unwrap();
+        generous.terminate(1).unwrap();
+        let _ = starved.wait();
+        let _ = control.wait();
+    }
 }

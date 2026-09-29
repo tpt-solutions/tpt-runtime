@@ -57,7 +57,15 @@ impl NetworkManager {
         if spec.mode.allows_inbound() {
             for (name, requested) in &spec.expose {
                 let (host_port, static_port) = if *requested == 0 {
-                    (self.pick_free_port().await, false)
+                    let picked = self.pick_free_port().await;
+                    if picked == 0 {
+                        return Err(RuntimeError::new(
+                            ErrorKind::NetworkFailure,
+                            "no free ephemeral port available for dynamic allocation",
+                        )
+                        .with_operation("network.assign"));
+                    }
+                    (picked, false)
                 } else {
                     (*requested, true)
                 };

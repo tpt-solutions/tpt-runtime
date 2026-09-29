@@ -291,7 +291,8 @@ fn interpret_result(
         code,
         killed: stopped.load(std::sync::atomic::Ordering::SeqCst)
             || reason.contains("fuel")
-            || reason.contains("stopped by runtime"),
+            || reason.contains("stopped by runtime")
+            || reason.contains("wall-clock limit"),
         failed: true,
     };
     match result {
