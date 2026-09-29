@@ -55,7 +55,10 @@ impl WorkloadState {
 
     /// True when the workload has finished executing and only records remain.
     pub fn is_terminal(self) -> bool {
-        matches!(self, WorkloadState::Stopped | WorkloadState::Failed | WorkloadState::Destroyed)
+        matches!(
+            self,
+            WorkloadState::Stopped | WorkloadState::Failed | WorkloadState::Destroyed
+        )
     }
 
     /// Returns the state reachable from `self` via `transition`, or `None`
@@ -168,7 +171,11 @@ mod tests {
     #[test]
     fn failure_is_reachable_from_active_states() {
         for state in [S::Created, S::Starting, S::Running, S::Paused, S::Stopping] {
-            assert_eq!(state.transition(S::Failed), Some(S::Failed), "{state} → failed");
+            assert_eq!(
+                state.transition(S::Failed),
+                Some(S::Failed),
+                "{state} → failed"
+            );
         }
     }
 

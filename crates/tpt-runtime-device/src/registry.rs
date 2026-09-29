@@ -103,7 +103,12 @@ impl DeviceRegistry {
     /// Attaches a device to a workload, enforcing availability and
     /// exclusive-class policy: every device may be claimed by multiple
     /// workloads only in `compute`/`read-only` modes.
-    pub fn attach(&mut self, workload: &str, id: &str, mode: DeviceAccessMode) -> Result<DeviceInfo> {
+    pub fn attach(
+        &mut self,
+        workload: &str,
+        id: &str,
+        mode: DeviceAccessMode,
+    ) -> Result<DeviceInfo> {
         let key = DeviceId::from_raw(id.to_owned());
         let info = self.devices.get(&key).cloned().ok_or_else(|| {
             RuntimeError::new(
@@ -120,14 +125,23 @@ impl DeviceRegistry {
             .with_operation("device.attach"));
         }
         let exclusive = matches!(mode, DeviceAccessMode::Full);
-        if exclusive && self.claims.get(&key).map(|c| !c.is_empty()).unwrap_or(false) {
+        if exclusive
+            && self
+                .claims
+                .get(&key)
+                .map(|c| !c.is_empty())
+                .unwrap_or(false)
+        {
             return Err(RuntimeError::new(
                 ErrorKind::DeviceUnavailable,
                 format!("device '{id}' is claimed by another workload in exclusive mode"),
             )
             .with_operation("device.attach"));
         }
-        self.claims.entry(key).or_default().push(workload.to_owned());
+        self.claims
+            .entry(key)
+            .or_default()
+            .push(workload.to_owned());
         Ok(info)
     }
 
@@ -135,10 +149,7 @@ impl DeviceRegistry {
     pub fn detach(&mut self, workload: &str, id: &str) -> Result<()> {
         let key = DeviceId::from_raw(id.to_owned());
         let claims = self.claims.get_mut(&key).ok_or_else(|| {
-            RuntimeError::new(
-                ErrorKind::NotFound,
-                format!("device '{id}' has no claims"),
-            )
+            RuntimeError::new(ErrorKind::NotFound, format!("device '{id}' has no claims"))
         })?;
         claims.retain(|w| w != workload);
         if claims.is_empty() {
@@ -205,7 +216,9 @@ mod tests {
             .unwrap_err();
         assert_eq!(err.kind, ErrorKind::DeviceUnavailable);
         // shared compute access is fine
-        assert!(registry.attach("b", "gpu:0", DeviceAccessMode::Compute).is_ok());
+        assert!(registry
+            .attach("b", "gpu:0", DeviceAccessMode::Compute)
+            .is_ok());
         assert_eq!(registry.claims_of("gpu:0").len(), 2);
 
         registry.release_workload("a");
@@ -217,8 +230,12 @@ mod tests {
     fn detach_removes_only_that_workload() {
         let mut registry = DeviceRegistry::new();
         registry.register(gpu());
-        registry.attach("a", "gpu:0", DeviceAccessMode::Compute).unwrap();
-        registry.attach("b", "gpu:0", DeviceAccessMode::Compute).unwrap();
+        registry
+            .attach("a", "gpu:0", DeviceAccessMode::Compute)
+            .unwrap();
+        registry
+            .attach("b", "gpu:0", DeviceAccessMode::Compute)
+            .unwrap();
         registry.detach("a", "gpu:0").unwrap();
         assert_eq!(registry.claims_of("gpu:0"), vec!["b".to_owned()]);
     }

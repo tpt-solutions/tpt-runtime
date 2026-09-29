@@ -77,11 +77,7 @@ impl LogCapture {
         let buffer = self.buffer.clone();
         let path = self.file.clone();
         std::thread::spawn(move || {
-            let mut file = File::options()
-                .create(true)
-                .append(true)
-                .open(&path)
-                .ok();
+            let mut file = File::options().create(true).append(true).open(&path).ok();
             let reader = BufReader::new(reader);
             for line in reader.lines() {
                 match line {

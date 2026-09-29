@@ -39,13 +39,18 @@ pub enum Capability {
 }
 
 impl serde::Serialize for Capability {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.name())
     }
 }
 
 impl<'de> serde::Deserialize<'de> for Capability {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
         let name = String::deserialize(deserializer)?;
         Ok(Capability::parse(&name))
     }
@@ -73,15 +78,23 @@ impl Capability {
             _ => {}
         }
         if let Some(rest) = name.strip_prefix("device:") {
-            return Capability::Device { id: rest.to_owned() };
+            return Capability::Device {
+                id: rest.to_owned(),
+            };
         }
         if let Some(rest) = name.strip_prefix("secret:") {
-            return Capability::Secret { name: rest.to_owned() };
+            return Capability::Secret {
+                name: rest.to_owned(),
+            };
         }
         if let Some(rest) = name.strip_prefix("ipc:service:") {
-            return Capability::IpcService { service: rest.to_owned() };
+            return Capability::IpcService {
+                service: rest.to_owned(),
+            };
         }
-        Capability::Other { name: name.to_owned() }
+        Capability::Other {
+            name: name.to_owned(),
+        }
     }
 
     /// The dotted/colon name of this capability as written in manifests.
@@ -119,13 +132,18 @@ pub struct CapabilitySet {
 }
 
 impl serde::Serialize for CapabilitySet {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
         serializer.collect_seq(self.grants.iter())
     }
 }
 
 impl<'de> serde::Deserialize<'de> for CapabilitySet {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
         let names = Vec::<String>::deserialize(deserializer)?;
         let mut set = CapabilitySet::empty();
         for name in names {
@@ -188,7 +206,10 @@ impl CapabilitySet {
         } else {
             Err(RuntimeError::new(
                 ErrorKind::CapabilityDenied,
-                format!("capability '{}' not granted to this workload", capability.name()),
+                format!(
+                    "capability '{}' not granted to this workload",
+                    capability.name()
+                ),
             ))
         }
     }
@@ -220,19 +241,31 @@ mod tests {
 
     #[test]
     fn parses_manifest_names() {
-        assert_eq!(Capability::parse("filesystem.read"), Capability::FilesystemRead);
-        assert_eq!(Capability::parse("network.outbound"), Capability::NetworkOutbound);
+        assert_eq!(
+            Capability::parse("filesystem.read"),
+            Capability::FilesystemRead
+        );
+        assert_eq!(
+            Capability::parse("network.outbound"),
+            Capability::NetworkOutbound
+        );
         assert_eq!(
             Capability::parse("device:gpu:0"),
-            Capability::Device { id: "gpu:0".to_owned() }
+            Capability::Device {
+                id: "gpu:0".to_owned()
+            }
         );
         assert_eq!(
             Capability::parse("secret:github-token"),
-            Capability::Secret { name: "github-token".to_owned() }
+            Capability::Secret {
+                name: "github-token".to_owned()
+            }
         );
         assert_eq!(
             Capability::parse("ipc:service:database"),
-            Capability::IpcService { service: "database".to_owned() }
+            Capability::IpcService {
+                service: "database".to_owned()
+            }
         );
     }
 
@@ -253,7 +286,12 @@ mod tests {
     #[test]
     fn unknown_names_are_other() {
         let cap = Capability::parse("compiler.execute");
-        assert_eq!(cap, Capability::Other { name: "compiler.execute".to_owned() });
+        assert_eq!(
+            cap,
+            Capability::Other {
+                name: "compiler.execute".to_owned()
+            }
+        );
         assert_eq!(cap.name(), "compiler.execute");
     }
 
@@ -277,8 +315,13 @@ mod tests {
     #[test]
     fn denial_error_mentions_capability_name() {
         let set = CapabilitySet::empty();
-        let err = set.require(&Capability::parse("secret:github-token")).unwrap_err();
-        assert_eq!(err.kind, tpt_runtime_core::error::ErrorKind::CapabilityDenied);
+        let err = set
+            .require(&Capability::parse("secret:github-token"))
+            .unwrap_err();
+        assert_eq!(
+            err.kind,
+            tpt_runtime_core::error::ErrorKind::CapabilityDenied
+        );
         assert!(err.message.contains("secret:github-token"));
     }
 

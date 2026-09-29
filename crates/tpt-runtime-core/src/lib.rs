@@ -14,7 +14,7 @@ pub mod state;
 pub mod timestamp;
 pub mod usage;
 
-pub use error::{RuntimeError, Result};
+pub use error::{Result, RuntimeError};
 pub use event::{EventKind, RuntimeEvent};
 pub use id::{CapabilityId, DeviceId, NetworkId, ResourceId, ServiceId, VolumeId, WorkloadId};
 pub use state::{WorkloadState, LIFECYCLE_TRANSITIONS};

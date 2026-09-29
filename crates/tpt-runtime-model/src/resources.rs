@@ -75,9 +75,12 @@ impl std::str::FromStr for Memory {
         let text = text.trim();
         let digits = text.trim_end_matches(|c: char| !c.is_ascii_digit());
         let (number, unit) = text.split_at(digits.len());
-        let number: u64 = number
-            .parse()
-            .map_err(|_| RuntimeError::new(ErrorKind::InvalidConfiguration, format!("invalid memory size '{text}'")))?;
+        let number: u64 = number.parse().map_err(|_| {
+            RuntimeError::new(
+                ErrorKind::InvalidConfiguration,
+                format!("invalid memory size '{text}'"),
+            )
+        })?;
         let multiplier = match unit.trim().to_ascii_uppercase().as_str() {
             "" | "B" | "BYTES" => 1,
             "K" | "KB" | "KIB" => Memory::KIB,
@@ -90,10 +93,12 @@ impl std::str::FromStr for Memory {
                 ))
             }
         };
-        number
-            .checked_mul(multiplier)
-            .map(Memory)
-            .ok_or_else(|| RuntimeError::new(ErrorKind::InvalidConfiguration, format!("memory size '{text}' overflows")))
+        number.checked_mul(multiplier).map(Memory).ok_or_else(|| {
+            RuntimeError::new(
+                ErrorKind::InvalidConfiguration,
+                format!("memory size '{text}' overflows"),
+            )
+        })
     }
 }
 
@@ -183,7 +188,10 @@ mod tests {
 
     #[test]
     fn serializes_as_plain_bytes() {
-        assert_eq!(serde_json::to_string(&Memory::gib(1)).unwrap(), "1073741824");
+        assert_eq!(
+            serde_json::to_string(&Memory::gib(1)).unwrap(),
+            "1073741824"
+        );
     }
 
     #[test]

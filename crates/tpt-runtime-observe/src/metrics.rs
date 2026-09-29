@@ -47,11 +47,7 @@ impl MetricsRegistry {
 
 impl MetricsRegistry {
     /// Collects usage from an instance and records it.
-    pub fn collect_from(
-        &self,
-        id: &WorkloadId,
-        sample: impl FnOnce() -> Result<ResourceUsage>,
-    ) {
+    pub fn collect_from(&self, id: &WorkloadId, sample: impl FnOnce() -> Result<ResourceUsage>) {
         if let Ok(usage) = sample() {
             self.update(id, usage);
         }

@@ -18,7 +18,7 @@ builds with zero clippy warnings.
 - [x] crates.io metadata on every crate
 - [x] Runnable example manifests (`examples/`) with a test that parses them
 - [x] Zero clippy warnings across the workspace
-- [ ] CI (build, test, clippy, fmt on Windows and Linux)
+- [x] CI (build, test, clippy, fmt on Windows and Linux) *(GitHub Actions: fmt, clippy `-D warnings`, test, release build, docs — each on `ubuntu-latest` and `windows-latest`)*
 - [ ] Publish crates to crates.io (dependency order)
 - [ ] Tagged release / version 0.1.0
 

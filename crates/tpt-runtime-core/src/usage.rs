@@ -1,8 +1,8 @@
 //! Resource usage accounting (SPEC §25, §27).
 
+use crate::timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use crate::timestamp::Timestamp;
 
 /// Observed resource consumption of a workload.
 ///
@@ -12,10 +12,18 @@ use crate::timestamp::Timestamp;
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ResourceUsage {
     /// User-mode CPU time consumed.
-    #[serde(default, with = "duration_nanos", skip_serializing_if = "Duration::is_zero")]
+    #[serde(
+        default,
+        with = "duration_nanos",
+        skip_serializing_if = "Duration::is_zero"
+    )]
     pub user_cpu: Duration,
     /// Kernel-mode CPU time consumed.
-    #[serde(default, with = "duration_nanos", skip_serializing_if = "Duration::is_zero")]
+    #[serde(
+        default,
+        with = "duration_nanos",
+        skip_serializing_if = "Duration::is_zero"
+    )]
     pub kernel_cpu: Duration,
     /// Peak memory observed, bytes.
     #[serde(default, skip_serializing_if = "is_zero")]
@@ -48,9 +56,9 @@ mod duration_nanos {
 
     pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Duration, D::Error> {
         let nanos = u128::deserialize(deserializer)?;
-        Ok(Duration::from_nanos(u64::try_from(nanos).map_err(|_| {
-            serde::de::Error::custom("duration nanos overflow u64")
-        })?))
+        Ok(Duration::from_nanos(u64::try_from(nanos).map_err(
+            |_| serde::de::Error::custom("duration nanos overflow u64"),
+        )?))
     }
 }
 

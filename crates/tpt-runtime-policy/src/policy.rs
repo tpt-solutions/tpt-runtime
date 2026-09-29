@@ -175,12 +175,11 @@ impl PolicyEngine {
                 let _ = notes;
                 Ok(())
             }
-            PolicyDecision::Denied(reason) => Err(RuntimeError::new(
-                ErrorKind::ResourceExhausted,
-                reason,
-            )
-            .with_workload(spec.name.clone())
-            .with_operation("admit")),
+            PolicyDecision::Denied(reason) => {
+                Err(RuntimeError::new(ErrorKind::ResourceExhausted, reason)
+                    .with_workload(spec.name.clone())
+                    .with_operation("admit"))
+            }
         }
     }
 }
@@ -221,7 +220,9 @@ mod tests {
 
     #[test]
     fn admits_within_capacity() {
-        let decision = engine().admit(&spec(Some(4.0), Some(Memory::gib(8)), vec![])).unwrap();
+        let decision = engine()
+            .admit(&spec(Some(4.0), Some(Memory::gib(8)), vec![]))
+            .unwrap();
         assert_eq!(decision, PolicyDecision::Admitted);
     }
 
@@ -249,10 +250,14 @@ mod tests {
     #[test]
     fn missing_gpu_denies_loudly() {
         let decision = engine()
-            .admit(&spec(None, None, vec![DeviceRequest {
-                id: "gpu:3".to_owned(),
-                mode: DeviceAccessMode::Compute,
-            }]))
+            .admit(&spec(
+                None,
+                None,
+                vec![DeviceRequest {
+                    id: "gpu:3".to_owned(),
+                    mode: DeviceAccessMode::Compute,
+                }],
+            ))
             .unwrap();
         assert!(matches!(decision, PolicyDecision::Denied(reason) if reason.contains("gpu:3")));
     }
@@ -260,10 +265,14 @@ mod tests {
     #[test]
     fn existing_gpu_admitted() {
         let decision = engine()
-            .admit(&spec(None, None, vec![DeviceRequest {
-                id: "gpu:0".to_owned(),
-                mode: DeviceAccessMode::Compute,
-            }]))
+            .admit(&spec(
+                None,
+                None,
+                vec![DeviceRequest {
+                    id: "gpu:0".to_owned(),
+                    mode: DeviceAccessMode::Compute,
+                }],
+            ))
             .unwrap();
         assert!(decision.is_admitted());
     }

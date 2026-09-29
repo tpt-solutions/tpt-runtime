@@ -2,13 +2,13 @@
 
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::{AsyncWrite, BufReader};
+use tokio::sync::Mutex as AsyncMutex;
 use tpt_runtime_config::DaemonConfig;
 use tpt_runtime_core::error::{ErrorKind, Result, RuntimeError};
 use tpt_runtime_ipc::{read_message, write_message, Request, Response};
 use tpt_runtime_workload::manager::LogsQuery;
 use tpt_runtime_workload::WorkloadManager;
-use tokio::io::{AsyncWrite, BufReader};
-use tokio::sync::Mutex as AsyncMutex;
 
 /// Shared state behind the API surface.
 pub struct ApiState {
@@ -71,7 +71,10 @@ pub async fn serve(config: DaemonConfig, state: Arc<ApiState>) -> Result<()> {
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
             .await
             .map_err(|err| {
-                RuntimeError::new(ErrorKind::System, format!("cannot bind 127.0.0.1:{port}: {err}"))
+                RuntimeError::new(
+                    ErrorKind::System,
+                    format!("cannot bind 127.0.0.1:{port}: {err}"),
+                )
             })?;
         let mut shutdown_rx = state.shutdown.subscribe();
         loop {
@@ -94,7 +97,9 @@ pub async fn serve(config: DaemonConfig, state: Arc<ApiState>) -> Result<()> {
 
 type SharedWriter = Arc<AsyncMutex<Box<dyn AsyncWrite + Unpin + Send>>>;
 
-async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static>(
+async fn handle_connection<
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+>(
     stream: S,
     state: Arc<ApiState>,
 ) -> Result<()> {
@@ -112,7 +117,11 @@ async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unp
         // events.subscribe: answer, then push the event stream on this
         // connection until the client hangs up.
         if request.method == "events.subscribe" {
-            respond(&writer, Response::ok(request.id, serde_json::json!({"subscribed": true}))).await?;
+            respond(
+                &writer,
+                Response::ok(request.id, serde_json::json!({"subscribed": true})),
+            )
+            .await?;
             return push_events(state, writer).await;
         }
 
@@ -129,7 +138,10 @@ async fn push_events(
     loop {
         match events.recv().await {
             Ok(event) => {
-                if write_message(&mut *writer.lock().await, &event).await.is_err() {
+                if write_message(&mut *writer.lock().await, &event)
+                    .await
+                    .is_err()
+                {
                     return Ok(());
                 }
             }
@@ -164,9 +176,7 @@ async fn route(
         other => other,
     };
     let get = |key: &str| params.get(key).cloned().unwrap_or(serde_json::Value::Null);
-    let get_str = |key: &str| -> Option<String> {
-        get(key).as_str().map(str::to_owned)
-    };
+    let get_str = |key: &str| -> Option<String> { get(key).as_str().map(str::to_owned) };
     let get_u64 = |key: &str| -> Option<u64> { get(key).as_u64() };
 
     match method {
@@ -257,7 +267,9 @@ async fn route(
         "volumes.create" => {
             let name = required(&get_str("name"), "name")?;
             let volume = manager.storage().lock().unwrap().create(&name)?;
-            Ok(serde_json::json!({ "name": volume.name, "path": volume.backing_path.display().to_string() }))
+            Ok(
+                serde_json::json!({ "name": volume.name, "path": volume.backing_path.display().to_string() }),
+            )
         }
 
         "volumes.list" => {
@@ -307,7 +319,10 @@ async fn route(
 }
 
 /// Resolves a workload reference (id or name) through the manager.
-fn resolve(manager: &WorkloadManager, id_or_name: &str) -> Result<tpt_runtime_core::id::WorkloadId> {
+fn resolve(
+    manager: &WorkloadManager,
+    id_or_name: &str,
+) -> Result<tpt_runtime_core::id::WorkloadId> {
     Ok(manager.inspect(id_or_name)?.id)
 }
 

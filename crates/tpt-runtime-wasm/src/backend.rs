@@ -47,9 +47,7 @@ impl WasmBackend {
 
         Ok(Self {
             engine,
-            _ticker: Arc::new(EpochTicker {
-                _handle: ticker,
-            }),
+            _ticker: Arc::new(EpochTicker { _handle: ticker }),
         })
     }
 }
@@ -163,7 +161,8 @@ impl ExecutionBackend for WasmBackend {
             .map(Duration::from_secs)
             .unwrap_or(Duration::MAX);
         // saturating far-future deadline when no timeout is requested
-        let deadline = std::time::Instant::now() + timeout.min(Duration::from_secs(60 * 60 * 24 * 365));
+        let deadline =
+            std::time::Instant::now() + timeout.min(Duration::from_secs(60 * 60 * 24 * 365));
         {
             let stopped = stopped.clone();
             store.epoch_deadline_callback(move |_store| {
@@ -314,9 +313,7 @@ fn interpret_result(
     }
 }
 
-fn wasm_spec(
-    spec: &WorkloadSpec,
-) -> Result<tpt_runtime_model::execution::WasmModuleSpec> {
+fn wasm_spec(spec: &WorkloadSpec) -> Result<tpt_runtime_model::execution::WasmModuleSpec> {
     match &spec.execution {
         tpt_runtime_model::execution::ExecutionSpec::WasmModule(spec) => Ok(spec.clone()),
         other => Err(RuntimeError::new(

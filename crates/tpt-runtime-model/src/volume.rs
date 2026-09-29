@@ -21,7 +21,9 @@ impl std::str::FromStr for VolumeAccessMode {
         match text {
             "read-only" | "readonly" | "ro" => Ok(VolumeAccessMode::ReadOnly),
             "read-write" | "readwrite" | "rw" => Ok(VolumeAccessMode::ReadWrite),
-            other => Err(format!("unknown volume mode '{other}' (expected read-only or read-write)")),
+            other => Err(format!(
+                "unknown volume mode '{other}' (expected read-only or read-write)"
+            )),
         }
     }
 }
@@ -54,8 +56,14 @@ mod tests {
 
     #[test]
     fn parses_access_modes() {
-        assert_eq!("read-only".parse::<VolumeAccessMode>().unwrap(), VolumeAccessMode::ReadOnly);
-        assert_eq!("rw".parse::<VolumeAccessMode>().unwrap(), VolumeAccessMode::ReadWrite);
+        assert_eq!(
+            "read-only".parse::<VolumeAccessMode>().unwrap(),
+            VolumeAccessMode::ReadOnly
+        );
+        assert_eq!(
+            "rw".parse::<VolumeAccessMode>().unwrap(),
+            VolumeAccessMode::ReadWrite
+        );
         assert!("append".parse::<VolumeAccessMode>().is_err());
     }
 

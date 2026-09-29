@@ -92,7 +92,10 @@ impl StorageManager {
                 serde_json::from_str::<Volume>(&raw).map_err(|err| {
                     RuntimeError::new(
                         ErrorKind::StorageFailure,
-                        format!("corrupt volume metadata in '{}': {err}", entry.path().display()),
+                        format!(
+                            "corrupt volume metadata in '{}': {err}",
+                            entry.path().display()
+                        ),
                     )
                 })?
             } else {
@@ -136,7 +139,10 @@ impl StorageManager {
     /// Resolves a logical volume by name.
     pub fn get(&self, name: &str) -> Result<&Volume> {
         self.volumes.get(name).ok_or_else(|| {
-            RuntimeError::new(ErrorKind::NotFound, format!("volume '{name}' does not exist"))
+            RuntimeError::new(
+                ErrorKind::NotFound,
+                format!("volume '{name}' does not exist"),
+            )
         })
     }
 
@@ -235,7 +241,14 @@ mod tests {
         assert_eq!(err.kind, ErrorKind::StorageFailure);
 
         // after removing the foreign content, removal works
-        std::fs::remove_file(manager.get("project").unwrap().backing_path.join("data.txt")).unwrap();
+        std::fs::remove_file(
+            manager
+                .get("project")
+                .unwrap()
+                .backing_path
+                .join("data.txt"),
+        )
+        .unwrap();
         manager.remove("project").unwrap();
         assert!(manager.get("project").is_err());
 

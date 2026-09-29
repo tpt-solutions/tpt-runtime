@@ -16,7 +16,9 @@ use tpt_runtime_model::BackendKind;
 use tpt_runtime_network::{NetworkAssignment, NetworkManager};
 use tpt_runtime_observe::{EventHub, MetricsRegistry};
 use tpt_runtime_policy::{PolicyEngine, ResourcePolicy};
-use tpt_runtime_process::{ExecutionBackend, ExitStatus, ResolvedMount, StopMode, WorkloadInstance};
+use tpt_runtime_process::{
+    ExecutionBackend, ExitStatus, ResolvedMount, StopMode, WorkloadInstance,
+};
 use tpt_runtime_security::SecretStore;
 use tpt_runtime_storage::StorageManager;
 
@@ -137,7 +139,10 @@ impl WorkloadManager {
 
     /// Registers an execution backend under its kind.
     pub fn register_backend(&self, backend: Arc<dyn ExecutionBackend>) {
-        self.backends.lock().unwrap().insert(backend.kind(), backend);
+        self.backends
+            .lock()
+            .unwrap()
+            .insert(backend.kind(), backend);
     }
 
     fn backend(&self, kind: BackendKind) -> Result<Arc<dyn ExecutionBackend>> {
@@ -344,12 +349,11 @@ impl WorkloadManager {
                 }
             }
             if std::time::Instant::now() >= deadline {
-                return Err(RuntimeError::new(
-                    ErrorKind::System,
-                    "workload did not exit in time",
-                )
-                .with_workload(id.clone())
-                .with_operation("wait"));
+                return Err(
+                    RuntimeError::new(ErrorKind::System, "workload did not exit in time")
+                        .with_workload(id.clone())
+                        .with_operation("wait"),
+                );
             }
             std::thread::sleep(Duration::from_millis(25));
         }
@@ -398,12 +402,11 @@ impl WorkloadManager {
                 }
             }
             if std::time::Instant::now() >= deadline {
-                return Err(RuntimeError::new(
-                    ErrorKind::System,
-                    "workload did not stop in time",
-                )
-                .with_workload(id.clone())
-                .with_operation("stop"));
+                return Err(
+                    RuntimeError::new(ErrorKind::System, "workload did not stop in time")
+                        .with_workload(id.clone())
+                        .with_operation("stop"),
+                );
             }
             std::thread::sleep(Duration::from_millis(25));
         }
@@ -591,8 +594,7 @@ impl WorkloadManager {
         std::thread::spawn(move || {
             let exit_rx = instance.exit();
             let status = match tokio::runtime::Builder::new_current_thread().build() {
-                Ok(rt) => rt
-                    .block_on(async { exit_rx.await.unwrap_or(ExitStatus::terminated()) }),
+                Ok(rt) => rt.block_on(async { exit_rx.await.unwrap_or(ExitStatus::terminated()) }),
                 Err(_) => ExitStatus::terminated(),
             };
 

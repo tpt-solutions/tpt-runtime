@@ -8,7 +8,9 @@ use std::fmt;
 /// The initial set matches SPEC §10 (`windows`, `linux`, `oci`, `wasm`);
 /// future kinds (`microvm`, `remote`, `edge`, `tpt-native`) must be added
 /// here without changing the workload model itself.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum BackendKind {
     /// Native Windows processes.
@@ -79,6 +81,9 @@ mod tests {
 
     #[test]
     fn serializes_as_lowercase() {
-        assert_eq!(serde_json::to_string(&BackendKind::Wasm).unwrap(), "\"wasm\"");
+        assert_eq!(
+            serde_json::to_string(&BackendKind::Wasm).unwrap(),
+            "\"wasm\""
+        );
     }
 }

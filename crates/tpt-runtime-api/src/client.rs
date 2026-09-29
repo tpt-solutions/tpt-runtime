@@ -1,11 +1,11 @@
 //! API client used by the CLI (SPEC §30: CLI is an API client).
 
 use std::time::Duration;
+use tokio::io::BufReader;
 use tpt_runtime_config::DaemonConfig;
 use tpt_runtime_core::error::{ErrorKind, Result, RuntimeError};
 use tpt_runtime_core::event::RuntimeEvent;
 use tpt_runtime_ipc::{read_message, write_message, Request, Response};
-use tokio::io::BufReader;
 
 /// One open connection to the runtime daemon.
 pub struct ApiClient {
@@ -15,11 +15,9 @@ pub struct ApiClient {
 }
 
 #[cfg(windows)]
-type ReadHalf =
-    tokio::io::ReadHalf<tokio::net::windows::named_pipe::NamedPipeClient>;
+type ReadHalf = tokio::io::ReadHalf<tokio::net::windows::named_pipe::NamedPipeClient>;
 #[cfg(windows)]
-type WriteHalf =
-    tokio::io::WriteHalf<tokio::net::windows::named_pipe::NamedPipeClient>;
+type WriteHalf = tokio::io::WriteHalf<tokio::net::windows::named_pipe::NamedPipeClient>;
 #[cfg(not(windows))]
 type ReadHalf = tokio::io::ReadHalf<tokio::net::TcpStream>;
 #[cfg(not(windows))]
@@ -32,8 +30,8 @@ impl ApiClient {
         let deadline = std::time::Instant::now() + Duration::from_secs(3);
         loop {
             #[cfg(windows)]
-            let attempt = tokio::net::windows::named_pipe::ClientOptions::new()
-                .open(&config.pipe_name);
+            let attempt =
+                tokio::net::windows::named_pipe::ClientOptions::new().open(&config.pipe_name);
             #[cfg(not(windows))]
             let attempt = {
                 let port: u16 = config
@@ -86,20 +84,16 @@ impl ApiClient {
         // read responses, skipping any interleaved event lines (this
         // connection did not subscribe)
         loop {
-            let response: Response = read_message(&mut self.reader)
-                .await?
-                .ok_or_else(|| {
-                    RuntimeError::new(
-                        ErrorKind::System,
-                        "daemon closed the connection before responding",
-                    )
-                })?;
+            let response: Response = read_message(&mut self.reader).await?.ok_or_else(|| {
+                RuntimeError::new(
+                    ErrorKind::System,
+                    "daemon closed the connection before responding",
+                )
+            })?;
             if response.id == id {
                 return match response.error {
                     Some(err) => Err(RuntimeError::new(
-                        err.kind
-                            .parse()
-                            .unwrap_or(ErrorKind::Other),
+                        err.kind.parse().unwrap_or(ErrorKind::Other),
                         err.message,
                     )
                     .with_operation(method)),
@@ -113,9 +107,7 @@ impl ApiClient {
     pub async fn recv_event(&mut self) -> Result<RuntimeEvent> {
         let event: RuntimeEvent = read_message(&mut self.reader)
             .await?
-            .ok_or_else(|| {
-                RuntimeError::new(ErrorKind::System, "event stream closed by daemon")
-            })?;
+            .ok_or_else(|| RuntimeError::new(ErrorKind::System, "event stream closed by daemon"))?;
         Ok(event)
     }
 

@@ -21,6 +21,6 @@ pub mod backend;
 pub mod logs;
 
 pub use backend::{
-    ExitStatus, ExecutionBackend, ResolvedMount, StartContext, StopMode, WorkloadInstance,
+    ExecutionBackend, ExitStatus, ResolvedMount, StartContext, StopMode, WorkloadInstance,
 };
 pub use logs::LogCapture;

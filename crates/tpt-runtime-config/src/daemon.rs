@@ -81,13 +81,19 @@ fn default_state_dir() -> PathBuf {
     }
     // non-Windows fallback
     if let Some(home) = std::env::var_os("HOME") {
-        return PathBuf::from(home).join(".local").join("share").join("tpt").join("runtime");
+        return PathBuf::from(home)
+            .join(".local")
+            .join("share")
+            .join("tpt")
+            .join("runtime");
     }
     PathBuf::from(".tpt-runtime")
 }
 
 fn pipe_name_from_env() -> Option<String> {
-    std::env::var("TPT_RUNTIME_PIPE").ok().filter(|p| !p.is_empty())
+    std::env::var("TPT_RUNTIME_PIPE")
+        .ok()
+        .filter(|p| !p.is_empty())
 }
 
 #[cfg(test)]
@@ -102,8 +108,10 @@ mod tests {
 
     #[test]
     fn state_layout_helpers() {
-        let mut config = DaemonConfig::default();
-        config.state_dir = std::env::temp_dir().join(format!("tpt-test-{}", std::process::id()));
+        let config = DaemonConfig {
+            state_dir: std::env::temp_dir().join(format!("tpt-test-{}", std::process::id())),
+            ..DaemonConfig::default()
+        };
         config.prepare_dirs().unwrap();
         assert!(config.logs_dir().is_dir());
         assert!(config.volumes_dir().is_dir());

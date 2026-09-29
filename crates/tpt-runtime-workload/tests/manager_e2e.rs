@@ -14,8 +14,8 @@ mod windows_e2e {
     use tpt_runtime_policy::PolicyEngine;
     use tpt_runtime_security::SecretStore;
     use tpt_runtime_storage::StorageManager;
-    use tpt_runtime_workload::{LogsQuery, WorkloadManager};
     use tpt_runtime_windows::WindowsProcessBackend;
+    use tpt_runtime_workload::{LogsQuery, WorkloadManager};
 
     fn manager(tag: &str) -> (Arc<WorkloadManager>, std::path::PathBuf) {
         let base = std::env::temp_dir().join(format!("tpt-e2e-{}-{}", tag, std::process::id()));
@@ -33,7 +33,9 @@ mod windows_e2e {
             storage,
             Arc::new(NetworkManager::new()),
             Arc::new(Mutex::new(DeviceRegistry::new())),
-            Arc::new(Mutex::new(SecretStore::open(base.join("secrets.json")).unwrap())),
+            Arc::new(Mutex::new(
+                SecretStore::open(base.join("secrets.json")).unwrap(),
+            )),
             PolicyEngine::new(tpt_runtime_policy::HostCapacity::unknown()),
         ));
         manager.register_backend(Arc::new(WindowsProcessBackend::new()));
@@ -112,12 +114,7 @@ mod windows_e2e {
     #[test]
     fn volumes_resolve_into_mount_context() {
         let (manager, base) = manager("volumes");
-        manager
-            .storage()
-            .lock()
-            .unwrap()
-            .create("proj")
-            .unwrap();
+        manager.storage().lock().unwrap().create("proj").unwrap();
         let mut spec = echo_spec("mounted");
         spec.volumes = vec![tpt_runtime_model::volume::VolumeMount {
             name: "proj".to_owned(),

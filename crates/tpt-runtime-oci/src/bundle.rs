@@ -89,11 +89,20 @@ mod tests {
 
     #[test]
     fn rejects_entry_outside_rootfs() {
-        assert!(!sanitize_rootfs_entry(Path::new("/bundles/b"), "../../etc/passwd"));
-        assert!(!sanitize_rootfs_entry(Path::new("/bundles/b"), "/absolute/path"));
+        assert!(!sanitize_rootfs_entry(
+            Path::new("/bundles/b"),
+            "../../etc/passwd"
+        ));
+        assert!(!sanitize_rootfs_entry(
+            Path::new("/bundles/b"),
+            "/absolute/path"
+        ));
         assert!(!sanitize_rootfs_entry(Path::new("/bundles/b"), ""));
         assert!(sanitize_rootfs_entry(Path::new("/bundles/b"), "bin/sh"));
-        assert!(sanitize_rootfs_entry(Path::new("/bundles/b"), "usr/local/bin/app"));
+        assert!(sanitize_rootfs_entry(
+            Path::new("/bundles/b"),
+            "usr/local/bin/app"
+        ));
     }
 
     #[test]

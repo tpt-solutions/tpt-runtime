@@ -76,7 +76,10 @@ impl ImageStore {
     /// Pins a tag to a digest (`refs/<repo>/<tag>` file).
     pub fn tag(&self, reference: &ImageReference, digest: &str) -> Result<()> {
         let key = validate_digest(digest)?;
-        let ref_dir = self.root.join("refs").join(encode_repo(&reference.repository));
+        let ref_dir = self
+            .root
+            .join("refs")
+            .join(encode_repo(&reference.repository));
         std::fs::create_dir_all(&ref_dir)?;
         let tag = reference.tag.clone().unwrap_or_else(|| "latest".to_owned());
         std::fs::write(ref_dir.join(tag), &key)?;

@@ -72,10 +72,7 @@ impl NetworkManager {
         } else if !spec.expose.is_empty() {
             return Err(RuntimeError::new(
                 ErrorKind::NetworkFailure,
-                format!(
-                    "network mode '{}' cannot expose ports",
-                    spec.mode
-                ),
+                format!("network mode '{}' cannot expose ports", spec.mode),
             )
             .with_operation("network.assign"));
         }
@@ -117,9 +114,7 @@ impl NetworkManager {
         // Try a few ephemeral binds; the OS guarantees liveness of the pick
         // until the listener drops, which happens before the workload binds.
         for _ in 0..32 {
-            if let Ok(listener) =
-                tokio::net::TcpListener::bind(("127.0.0.1", 0)).await
-            {
+            if let Ok(listener) = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await {
                 if let Ok(addr) = listener.local_addr() {
                     drop(listener);
                     let port = addr.port();
@@ -154,8 +149,17 @@ mod tests {
     #[tokio::test]
     async fn none_mode_has_no_ports() {
         let manager = NetworkManager::new();
-        let assignment = manager.assign("w", &spec(tpt_runtime_model::network::NetworkMode::None, &[])).await.unwrap();
-        assert_eq!(assignment.mode, tpt_runtime_model::network::NetworkMode::None);
+        let assignment = manager
+            .assign(
+                "w",
+                &spec(tpt_runtime_model::network::NetworkMode::None, &[]),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            assignment.mode,
+            tpt_runtime_model::network::NetworkMode::None
+        );
         assert!(assignment.ports.is_empty());
     }
 
@@ -176,14 +180,24 @@ mod tests {
         let http = assignment.ports.iter().find(|p| p.name == "http").unwrap();
         assert_eq!(http.host_port, 8080);
         assert!(http.static_port);
-        let metrics = assignment.ports.iter().find(|p| p.name == "metrics").unwrap();
+        let metrics = assignment
+            .ports
+            .iter()
+            .find(|p| p.name == "metrics")
+            .unwrap();
         assert_ne!(metrics.host_port, 0);
         assert!(!metrics.static_port);
 
         // release frees the static port for the next workload
         manager.release(&assignment);
         let again = manager
-            .assign("api2", &spec(tpt_runtime_model::network::NetworkMode::Service, &[("http", 8080)]))
+            .assign(
+                "api2",
+                &spec(
+                    tpt_runtime_model::network::NetworkMode::Service,
+                    &[("http", 8080)],
+                ),
+            )
             .await
             .unwrap();
         assert_eq!(again.ports[0].host_port, 8080);
@@ -193,11 +207,23 @@ mod tests {
     async fn duplicate_static_port_fails_explicitly() {
         let manager = NetworkManager::new();
         let first = manager
-            .assign("a", &spec(tpt_runtime_model::network::NetworkMode::Service, &[("http", 9000)]))
+            .assign(
+                "a",
+                &spec(
+                    tpt_runtime_model::network::NetworkMode::Service,
+                    &[("http", 9000)],
+                ),
+            )
             .await
             .unwrap();
         let err = manager
-            .assign("b", &spec(tpt_runtime_model::network::NetworkMode::Service, &[("http", 9000)]))
+            .assign(
+                "b",
+                &spec(
+                    tpt_runtime_model::network::NetworkMode::Service,
+                    &[("http", 9000)],
+                ),
+            )
             .await
             .unwrap_err();
         assert_eq!(err.kind, ErrorKind::NetworkFailure);
@@ -208,7 +234,13 @@ mod tests {
     async fn expose_without_inbound_mode_fails() {
         let manager = NetworkManager::new();
         let err = manager
-            .assign("a", &spec(tpt_runtime_model::network::NetworkMode::Outbound, &[("http", 80)]))
+            .assign(
+                "a",
+                &spec(
+                    tpt_runtime_model::network::NetworkMode::Outbound,
+                    &[("http", 80)],
+                ),
+            )
             .await
             .unwrap_err();
         assert_eq!(err.kind, ErrorKind::NetworkFailure);

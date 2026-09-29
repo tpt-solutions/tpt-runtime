@@ -122,4 +122,3 @@ pub trait WorkloadInstance: Send + Sync {
         serde_json::Value::Null
     }
 }
-

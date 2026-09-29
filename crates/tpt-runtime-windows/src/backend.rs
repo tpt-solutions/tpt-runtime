@@ -166,7 +166,11 @@ impl ExecutionBackend for WindowsProcessBackend {
         ))
     }
 
-    fn start(&self, _spec: &WorkloadSpec, _ctx: &StartContext) -> Result<Box<dyn WorkloadInstance>> {
+    fn start(
+        &self,
+        _spec: &WorkloadSpec,
+        _ctx: &StartContext,
+    ) -> Result<Box<dyn WorkloadInstance>> {
         Err(RuntimeError::new(
             ErrorKind::BackendUnavailable,
             "windows backend requires a Windows host",
@@ -174,9 +178,7 @@ impl ExecutionBackend for WindowsProcessBackend {
     }
 }
 
-fn windows_spec(
-    spec: &WorkloadSpec,
-) -> Result<tpt_runtime_model::execution::WindowsProcessSpec> {
+fn windows_spec(spec: &WorkloadSpec) -> Result<tpt_runtime_model::execution::WindowsProcessSpec> {
     match &spec.execution {
         tpt_runtime_model::execution::ExecutionSpec::WindowsProcess(spec) => Ok(spec.clone()),
         other => Err(RuntimeError::new(
@@ -374,8 +376,7 @@ mod tests {
     #[test]
     fn start_run_capture_and_stats() {
         let backend = WindowsProcessBackend::new();
-        let log_dir =
-            std::env::temp_dir().join(format!("tpt-win-{}-run", std::process::id()));
+        let log_dir = std::env::temp_dir().join(format!("tpt-win-{}-run", std::process::id()));
         let context = ctx(log_dir.clone());
         let workload = spec("cmd.exe", &["/C", "echo hello-from-workload"], None);
 
@@ -404,7 +405,10 @@ mod tests {
             }
             std::thread::sleep(std::time::Duration::from_millis(40));
         }
-        assert!(contents.contains("hello-from-workload"), "log: {contents:?}");
+        assert!(
+            contents.contains("hello-from-workload"),
+            "log: {contents:?}"
+        );
         std::fs::remove_dir_all(&log_dir).ok();
     }
 

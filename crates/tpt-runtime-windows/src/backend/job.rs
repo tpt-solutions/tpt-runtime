@@ -11,10 +11,10 @@ use tpt_runtime_core::error::{ErrorKind, Result, RuntimeError};
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, CreateJobObjectW, JobObjectBasicAndIoAccountingInformation,
-    JobObjectExtendedLimitInformation, JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION,
+    JobObjectExtendedLimitInformation, QueryInformationJobObject, SetInformationJobObject,
+    TerminateJobObject, JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION,
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-    JOB_OBJECT_LIMIT_PROCESS_MEMORY, QueryInformationJobObject, SetInformationJobObject,
-    TerminateJobObject,
+    JOB_OBJECT_LIMIT_PROCESS_MEMORY,
 };
 
 /// One resource-usage snapshot from the job.
@@ -51,11 +51,10 @@ impl JobObject {
         // SAFETY: both parameters are optional pointers; null means defaults.
         let handle = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
         if handle.is_null() {
-            return Err(RuntimeError::new(
-                ErrorKind::System,
-                "CreateJobObjectW failed",
-            )
-            .with_backend("windows"));
+            return Err(
+                RuntimeError::new(ErrorKind::System, "CreateJobObjectW failed")
+                    .with_backend("windows"),
+            );
         }
 
         // SAFETY: zeroed POD struct is the documented initialization for
@@ -81,11 +80,10 @@ impl JobObject {
         if ok == 0 {
             // SAFETY: closing the handle we created; no further use.
             unsafe { CloseHandle(handle) };
-            return Err(RuntimeError::new(
-                ErrorKind::System,
-                "SetInformationJobObject failed",
-            )
-            .with_backend("windows"));
+            return Err(
+                RuntimeError::new(ErrorKind::System, "SetInformationJobObject failed")
+                    .with_backend("windows"),
+            );
         }
 
         Ok(Arc::new(Self { handle }))
@@ -97,11 +95,10 @@ impl JobObject {
         // child; the job handle is owned and valid.
         let ok = unsafe { AssignProcessToJobObject(self.handle, raw_handle) };
         if ok == 0 {
-            return Err(RuntimeError::new(
-                ErrorKind::System,
-                "AssignProcessToJobObject failed",
-            )
-            .with_backend("windows"));
+            return Err(
+                RuntimeError::new(ErrorKind::System, "AssignProcessToJobObject failed")
+                    .with_backend("windows"),
+            );
         }
         Ok(())
     }
@@ -111,11 +108,10 @@ impl JobObject {
         // SAFETY: job handle is owned and valid.
         let ok = unsafe { TerminateJobObject(self.handle, exit_code) };
         if ok == 0 {
-            return Err(RuntimeError::new(
-                ErrorKind::System,
-                "TerminateJobObject failed",
-            )
-            .with_backend("windows"));
+            return Err(
+                RuntimeError::new(ErrorKind::System, "TerminateJobObject failed")
+                    .with_backend("windows"),
+            );
         }
         Ok(())
     }
@@ -125,8 +121,7 @@ impl JobObject {
     pub fn query_usage(&self) -> Option<JobUsage> {
         // SAFETY: valid handle, matching class constant, buffer and size for
         // JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION.
-        let mut info: JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION =
-            unsafe { std::mem::zeroed() };
+        let mut info: JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION = unsafe { std::mem::zeroed() };
         let ok = unsafe {
             QueryInformationJobObject(
                 self.handle,

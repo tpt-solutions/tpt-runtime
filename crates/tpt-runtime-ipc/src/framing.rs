@@ -21,12 +21,14 @@ pub async fn read_message<T: DeserializeOwned, R: AsyncBufRead + Unpin + ?Sized>
     if bytes == 0 {
         return Ok(None);
     }
-    serde_json::from_str::<T>(line.trim()).map(Some).map_err(|err| {
-        tpt_runtime_core::error::RuntimeError::new(
-            tpt_runtime_core::error::ErrorKind::Other,
-            format!("malformed message: {err}"),
-        )
-    })
+    serde_json::from_str::<T>(line.trim())
+        .map(Some)
+        .map_err(|err| {
+            tpt_runtime_core::error::RuntimeError::new(
+                tpt_runtime_core::error::ErrorKind::Other,
+                format!("malformed message: {err}"),
+            )
+        })
 }
 
 /// Writes one JSON message terminated by a newline and flushes.

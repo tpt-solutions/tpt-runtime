@@ -39,9 +39,8 @@ impl OciBackend {
                 ))
             }
         };
-        let reference = ImageReference::parse(&image.image).map_err(|err| {
-            RuntimeError::new(ErrorKind::InvalidConfiguration, err)
-        })?;
+        let reference = ImageReference::parse(&image.image)
+            .map_err(|err| RuntimeError::new(ErrorKind::InvalidConfiguration, err))?;
         let mut bundle = self.store.resolve(&reference)?;
         bundle.args = {
             let mut args = Vec::new();
@@ -78,7 +77,11 @@ impl ExecutionBackend for OciBackend {
     /// Starting an OCI workload requires a process/isolation provider
     /// (Boxcar primitive). Until the `tpt-boxcar` integration lands this
     /// fails explicitly — never silently (SPEC §48).
-    fn start(&self, _spec: &WorkloadSpec, _ctx: &StartContext) -> Result<Box<dyn WorkloadInstance>> {
+    fn start(
+        &self,
+        _spec: &WorkloadSpec,
+        _ctx: &StartContext,
+    ) -> Result<Box<dyn WorkloadInstance>> {
         Err(RuntimeError::new(
             ErrorKind::NotImplemented,
             "OCI workload start requires tpt-boxcar isolation primitives (Phase 4)",

@@ -155,7 +155,11 @@ impl RuntimeEvent {
     }
 
     /// Attaches one structured payload field.
-    pub fn with_field(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+    pub fn with_field(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<serde_json::Value>,
+    ) -> Self {
         self.fields
             .get_or_insert_with(serde_json::Map::new)
             .insert(key.into(), value.into());

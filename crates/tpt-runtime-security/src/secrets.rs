@@ -101,7 +101,10 @@ impl SecretStore {
             other => {
                 return Err(RuntimeError::new(
                     ErrorKind::CapabilityDenied,
-                    format!("secret resolution requires a secret capability, got '{}'", other.name()),
+                    format!(
+                        "secret resolution requires a secret capability, got '{}'",
+                        other.name()
+                    ),
                 ))
             }
         };
@@ -150,9 +153,11 @@ mod tests {
     use super::*;
 
     fn temp_path() -> PathBuf {
-        std::env::temp_dir()
-            .join("tpt-secrets")
-            .join(format!("{}-{}", std::process::id(), uuid::Uuid::new_v4().simple()))
+        std::env::temp_dir().join("tpt-secrets").join(format!(
+            "{}-{}",
+            std::process::id(),
+            uuid::Uuid::new_v4().simple()
+        ))
     }
 
     #[test]

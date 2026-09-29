@@ -84,7 +84,7 @@ impl EventHub {
 mod tests {
     use super::*;
     use tpt_runtime_core::id::WorkloadId;
-    use tpt_runtime_core::{EventKind, Timestamp};
+    use tpt_runtime_core::EventKind;
 
     fn temp_sink() -> PathBuf {
         static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);

@@ -1,12 +1,12 @@
 //! WSL-backed Linux execution (SPEC §11, Phase 1 of the layered strategy).
 
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 use tpt_runtime_core::error::{ErrorKind, Result, RuntimeError};
 use tpt_runtime_model::workload::WorkloadSpec;
 use tpt_runtime_process::{
     ExecutionBackend, ExitStatus, LogCapture, StartContext, StopMode, WorkloadInstance,
 };
-use std::sync::Mutex;
 
 /// Linux backend executing workloads through WSL on Windows hosts
 /// (SPEC §11). On other hosts it reports `backend_unavailable`.
@@ -129,7 +129,11 @@ impl ExecutionBackend for LinuxBackend {
         ))
     }
 
-    fn start(&self, _spec: &WorkloadSpec, _ctx: &StartContext) -> Result<Box<dyn WorkloadInstance>> {
+    fn start(
+        &self,
+        _spec: &WorkloadSpec,
+        _ctx: &StartContext,
+    ) -> Result<Box<dyn WorkloadInstance>> {
         Err(RuntimeError::new(
             ErrorKind::BackendUnavailable,
             "WSL-backed linux backend requires a Windows host",
@@ -137,9 +141,7 @@ impl ExecutionBackend for LinuxBackend {
     }
 }
 
-fn linux_spec(
-    spec: &WorkloadSpec,
-) -> Result<tpt_runtime_model::execution::LinuxProcessSpec> {
+fn linux_spec(spec: &WorkloadSpec) -> Result<tpt_runtime_model::execution::LinuxProcessSpec> {
     match &spec.execution {
         tpt_runtime_model::execution::ExecutionSpec::LinuxProcess(spec) => Ok(spec.clone()),
         other => Err(RuntimeError::new(
@@ -225,10 +227,10 @@ mod tests {
             network_mode: tpt_runtime_model::network::NetworkMode::None,
             exposed_ports: vec![],
         };
-        match backend.prepare(&spec(), &ctx) {
-            Err(err) => assert_eq!(err.kind, ErrorKind::BackendUnavailable),
-            Ok(()) => {} // distro exists on this host (unlikely name)
+        if let Err(err) = backend.prepare(&spec(), &ctx) {
+            assert_eq!(err.kind, ErrorKind::BackendUnavailable);
         }
+        // Ok(()) would mean the distro exists on this host (unlikely name).
         std::fs::remove_dir_all(&base).ok();
     }
 }

@@ -107,7 +107,7 @@ fn is_name_char(c: char) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::{WindowsProcessSpec};
+    use crate::execution::WindowsProcessSpec;
 
     fn sample() -> WorkloadSpec {
         WorkloadSpec {

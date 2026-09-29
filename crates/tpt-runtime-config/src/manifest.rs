@@ -133,8 +133,12 @@ pub struct CapabilityTable {
 impl Manifest {
     /// Parses a manifest from TOML text.
     pub fn parse(toml_text: &str) -> Result<Manifest> {
-        let manifest: Manifest = toml::from_str(toml_text)
-            .map_err(|err| RuntimeError::new(ErrorKind::InvalidConfiguration, format!("invalid manifest: {err}")))?;
+        let manifest: Manifest = toml::from_str(toml_text).map_err(|err| {
+            RuntimeError::new(
+                ErrorKind::InvalidConfiguration,
+                format!("invalid manifest: {err}"),
+            )
+        })?;
         manifest.validate_version()?;
         Ok(manifest)
     }
@@ -183,9 +187,8 @@ impl Manifest {
         for volume in self.volumes {
             let mode = match volume.mode.as_deref() {
                 None => VolumeAccessMode::ReadWrite,
-                Some(text) => VolumeAccessMode::from_str(text).map_err(|err| {
-                    RuntimeError::new(ErrorKind::InvalidConfiguration, err)
-                })?,
+                Some(text) => VolumeAccessMode::from_str(text)
+                    .map_err(|err| RuntimeError::new(ErrorKind::InvalidConfiguration, err))?,
             };
             spec.volumes.push(VolumeMount {
                 name: volume.name,
@@ -197,9 +200,8 @@ impl Manifest {
         for device in self.devices {
             let mode = match device.mode.as_deref() {
                 None => DeviceAccessMode::Compute,
-                Some(text) => DeviceAccessMode::from_str(text).map_err(|err| {
-                    RuntimeError::new(ErrorKind::InvalidConfiguration, err)
-                })?,
+                Some(text) => DeviceAccessMode::from_str(text)
+                    .map_err(|err| RuntimeError::new(ErrorKind::InvalidConfiguration, err))?,
             };
             spec.devices.push(DeviceRequest {
                 id: device.id,
@@ -238,27 +240,33 @@ impl Manifest {
                 working_dir: self.execution.working_dir.clone(),
                 env: BTreeMap::new(),
             }),
-            BackendKind::Linux => ExecutionSpec::LinuxProcess(tpt_runtime_model::execution::LinuxProcessSpec {
-                distro: required(&self.execution.distro, "execution.distro")?,
-                command: self
-                    .execution
-                    .command
-                    .as_deref()
-                    .map(split_command)
-                    .unwrap_or_default(),
-                env: BTreeMap::new(),
-            }),
-            BackendKind::Oci => ExecutionSpec::OciImage(tpt_runtime_model::execution::OciImageSpec {
-                image: required(&self.execution.image, "execution.image")?,
-                args: self.execution.args.clone(),
-                env: BTreeMap::new(),
-            }),
-            BackendKind::Wasm => ExecutionSpec::WasmModule(tpt_runtime_model::execution::WasmModuleSpec {
-                module: PathBuf::from(required(&self.execution.module, "execution.module")?),
-                class: self.execution.class.unwrap_or_default(),
-                env: BTreeMap::new(),
-                args: self.execution.args.clone(),
-            }),
+            BackendKind::Linux => {
+                ExecutionSpec::LinuxProcess(tpt_runtime_model::execution::LinuxProcessSpec {
+                    distro: required(&self.execution.distro, "execution.distro")?,
+                    command: self
+                        .execution
+                        .command
+                        .as_deref()
+                        .map(split_command)
+                        .unwrap_or_default(),
+                    env: BTreeMap::new(),
+                })
+            }
+            BackendKind::Oci => {
+                ExecutionSpec::OciImage(tpt_runtime_model::execution::OciImageSpec {
+                    image: required(&self.execution.image, "execution.image")?,
+                    args: self.execution.args.clone(),
+                    env: BTreeMap::new(),
+                })
+            }
+            BackendKind::Wasm => {
+                ExecutionSpec::WasmModule(tpt_runtime_model::execution::WasmModuleSpec {
+                    module: PathBuf::from(required(&self.execution.module, "execution.module")?),
+                    class: self.execution.class.unwrap_or_default(),
+                    env: BTreeMap::new(),
+                    args: self.execution.args.clone(),
+                })
+            }
         };
         Ok(exec)
     }
@@ -331,7 +339,10 @@ LOG_LEVEL = "debug"
         let spec = manifest.into_workload_spec().unwrap();
         assert_eq!(spec.name, "example");
         assert_eq!(spec.backend(), BackendKind::Windows);
-        assert_eq!(spec.resources.memory, Some(tpt_runtime_model::Memory::gib(4)));
+        assert_eq!(
+            spec.resources.memory,
+            Some(tpt_runtime_model::Memory::gib(4))
+        );
         assert_eq!(spec.network.mode, NetworkMode::Service);
         assert_eq!(spec.volumes[0].mode, VolumeAccessMode::ReadOnly);
         assert_eq!(spec.devices[0].id, "gpu:0");

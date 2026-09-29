@@ -11,7 +11,11 @@ use tpt_runtime_api::ApiClient;
 use tpt_runtime_config::{DaemonConfig, DEFAULT_PIPE_NAME};
 
 #[derive(Parser)]
-#[command(name = "tpt", version, about = "tpt-runtime: a unified workload runtime")]
+#[command(
+    name = "tpt",
+    version,
+    about = "tpt-runtime: a unified workload runtime"
+)]
 struct Cli {
     /// Print raw JSON responses instead of formatted output.
     #[arg(long, global = true)]
@@ -247,12 +251,25 @@ async fn dispatch(cli: Cli) -> Result<()> {
                 bail!("choose exactly one of --windows, --wasm, --oci, --manifest");
             }
             let manifest_toml = build_manifest(
-                &windows, &wasm, &oci, &manifest, &name, cpu, &memory, timeout, fuel, &network,
-                &volumes, &capabilities, args.clone(),
+                &windows,
+                &wasm,
+                &oci,
+                &manifest,
+                &name,
+                cpu,
+                &memory,
+                timeout,
+                fuel,
+                &network,
+                &volumes,
+                &capabilities,
+                args.clone(),
             )?;
             if std::env::var_os("TPT_DEBUG_MANIFEST").is_some() {
-                eprintln!("--- manifest ---
-{manifest_toml}--- end ---");
+                eprintln!(
+                    "--- manifest ---
+{manifest_toml}--- end ---"
+                );
             }
             let mut client = ApiClient::connect(&config).await?;
             let created = client
@@ -509,7 +526,10 @@ async fn dispatch(cli: Cli) -> Result<()> {
                     std::io::Read::read_to_string(&mut std::io::stdin(), &mut value)?;
                     let value = value.trim_end_matches(['\r', '\n']);
                     client
-                        .call("secrets.set", serde_json::json!({ "name": name, "value": value }))
+                        .call(
+                            "secrets.set",
+                            serde_json::json!({ "name": name, "value": value }),
+                        )
                         .await?;
                     println!("secret '{name}' stored");
                     Ok(())
@@ -534,8 +554,8 @@ async fn dispatch(cli: Cli) -> Result<()> {
 }
 
 fn start_daemon(state_dir: Option<String>, pipe: Option<String>) -> Result<()> {
-    use std::process::Command;
     use std::os::windows::process::CommandExt;
+    use std::process::Command;
 
     let exe = std::env::current_exe().context("cannot locate own executable")?;
     let mut command = Command::new(exe);
@@ -555,7 +575,10 @@ fn start_daemon(state_dir: Option<String>, pipe: Option<String>) -> Result<()> {
     #[cfg(not(windows))]
     {
         use std::process::Stdio;
-        command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+        command
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
     }
 
     command.spawn().context("failed to spawn daemon")?;
@@ -716,7 +739,10 @@ fn apply_overrides(toml_text: &mut String, overrides: &Overrides<'_>) -> Result<
 fn override_key(text: &str, key: &str, value: &str) -> String {
     // crude but sufficient: replace `key = ...` first occurrence
     if let Some(pos) = text.find(&format!("{key} =")) {
-        let line_end = text[pos..].find('\n').map(|e| pos + e).unwrap_or(text.len());
+        let line_end = text[pos..]
+            .find('\n')
+            .map(|e| pos + e)
+            .unwrap_or(text.len());
         let mut merged = String::with_capacity(text.len());
         merged.push_str(&text[..pos]);
         merged.push_str(&format!("{key} = {value}"));

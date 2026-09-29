@@ -59,14 +59,16 @@ mod tests {
 
     #[test]
     fn device_request_defaults_to_compute() {
-        let request: DeviceRequest =
-            serde_json::from_str(r#"{"id": "gpu:0"}"#).unwrap();
+        let request: DeviceRequest = serde_json::from_str(r#"{"id": "gpu:0"}"#).unwrap();
         assert_eq!(request.mode, DeviceAccessMode::Compute);
     }
 
     #[test]
     fn parses_modes() {
-        assert_eq!("full".parse::<DeviceAccessMode>().unwrap(), DeviceAccessMode::Full);
+        assert_eq!(
+            "full".parse::<DeviceAccessMode>().unwrap(),
+            DeviceAccessMode::Full
+        );
         assert!("wireless".parse::<DeviceAccessMode>().is_err());
     }
 }
