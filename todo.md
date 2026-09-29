@@ -8,6 +8,20 @@ events, observability — with 46 test suites green. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the map and known MVP
 limitations.
 
+Since then: every crate has a README, CHANGELOG and crates.io metadata,
+runnable example manifests live in [examples/](examples/), and the workspace
+builds with zero clippy warnings.
+
+## Packaging & Hygiene
+
+- [x] Per-crate README and CHANGELOG
+- [x] crates.io metadata on every crate
+- [x] Runnable example manifests (`examples/`) with a test that parses them
+- [x] Zero clippy warnings across the workspace
+- [ ] CI (build, test, clippy, fmt on Windows and Linux)
+- [ ] Publish crates to crates.io (dependency order)
+- [ ] Tagged release / version 0.1.0
+
 ## MVP Capabilities (§43)
 
 - [x] Windows host daemon
