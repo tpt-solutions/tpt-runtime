@@ -74,6 +74,10 @@ tokio = { version = "1", features = [
     "time",
 ] }
 toml = "0.9"
+flate2 = "1"
+sha2 = "0.11"
+tar = "0.4"
+ureq = "3"
 uuid = { version = "1", features = ["v4", "serde"] }
 wasmtime = "49"
 wasmtime-wasi = "49"
