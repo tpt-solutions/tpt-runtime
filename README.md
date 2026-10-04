@@ -8,7 +8,9 @@ See [SPEC.md](SPEC.md) for the full design specification, [docs/ARCHITECTURE.md]
 
 ## Status
 
-MVP implemented (SPEC §43): Windows host daemon, `tpt.runtime/v1` manifests, workload lifecycle, native Windows-process backend (Job Objects), WASM backend (wasmtime + WASI), logical volumes/networks, capability model, resource accounting, local named-pipe API, `tpt` CLI, structured events and observability. OCI support is prepared (references, bundles, content store) and awaits `tpt-boxcar` isolation primitives; Linux runs through WSL.
+MVP implemented (SPEC §43): Windows host daemon, `tpt.runtime/v1` manifests, workload lifecycle, native Windows-process backend (Job Objects), WASM backend (wasmtime + WASI), logical volumes/networks, capability model, resource accounting, local named-pipe API, `tpt` CLI, structured events and observability. OCI support is complete end to end: image pull, layer unpacking, and a Windows isolation provider (`tpt-runtime-sandbox`) that runs bundles under job objects and restricted tokens. Linux runs through WSL.
+
+The OCI provider runs Windows-based images and refuses Linux (ELF) ones, since Windows cannot execute them; see the [sandbox README](crates/tpt-runtime-sandbox/README.md). Starting OCI workloads requires an elevated daemon.
 
 Requires a Rust toolchain (stable, MSVC) to build. Windows is the primary host.
 
@@ -64,7 +66,7 @@ Every example manifest is covered by a test in `tpt-runtime-config`, so the ship
 
 ## Crates
 
-21 crates, layered so the workload model never depends on a backend. Each crate has its own README with runnable examples, and its own changelog.
+22 crates, layered so the workload model never depends on a backend. Each crate has its own README with runnable examples, and its own changelog.
 
 ### Foundations
 
@@ -89,7 +91,8 @@ Every example manifest is covered by a test in `tpt-runtime-config`, so the ship
 | [`process`](crates/tpt-runtime-process) | the `ExecutionBackend` / `WorkloadInstance` traits, log capture |
 | [`windows`](crates/tpt-runtime-windows) | Job Object isolation, kill-tree, env allowlist, job accounting |
 | [`wasm`](crates/tpt-runtime-wasm) | wasmtime + WASI p1, fuel/epoch limits, preopened volumes |
-| [`oci`](crates/tpt-runtime-oci) | image references, bundle model, content store; start awaits Boxcar |
+| [`oci`](crates/tpt-runtime-oci) | image references, bundle model, content store, isolation seam |
+| [`sandbox`](crates/tpt-runtime-sandbox) | Windows OCI isolation: job objects, restricted tokens |
 | [`linux`](crates/tpt-runtime-linux) | WSL-backed execution, layered strategy phase 1 |
 
 ### Resources and observability

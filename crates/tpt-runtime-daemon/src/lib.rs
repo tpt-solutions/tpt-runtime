@@ -82,9 +82,14 @@ pub async fn run(config: DaemonConfig) -> Result<()> {
     } else {
         tpt_runtime_oci::PullPolicy::Never
     };
+    // The runtime's own Windows isolation provider (SPEC §13, §17). Boxcar was
+    // the intended provider, but its Origin sandbox cannot spawn OCI
+    // containers and has no Windows isolation, so the sandbox crate supplies
+    // the boundary here.
     manager.register_backend(Arc::new(
         tpt_runtime_oci::OciBackend::new(config.state_dir.join("images"))?
-            .with_pull_policy(oci_policy),
+            .with_pull_policy(oci_policy)
+            .with_provider(Arc::new(tpt_runtime_sandbox::WindowsSandbox::new())),
     ));
     manager.register_backend(Arc::new(tpt_runtime_linux::LinuxBackend::new()));
 

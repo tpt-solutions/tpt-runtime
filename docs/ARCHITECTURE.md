@@ -148,14 +148,24 @@ Archon is the substrate; the runtime keeps it swappable:
 
 Boxcar provides workload-level isolation and packaging:
 
-1. **OCI start** — `tpt-runtime-oci::OciBackend::start` is the reserved
-   seam. The preparation side is real and Boxcar-compatible today: the
-   registry client pulls and digest-verifies manifests, configs and
-   layers; the unpacker assembles the rootfs (whiteouts, hostile-entry
-   rejection); each bundle carries a runtime-spec `config.json`. What
-   Boxcar/Origin does not provide yet — and what `start` therefore fails
-   loudly without — is the "run this bundle isolated" primitive itself
-   (Origin's own OCI support is bookkeeping-only at the time of writing).
+1. **OCI start** — `tpt-runtime-oci::OciBackend::start` delegates to an
+   `IsolationProvider`. The preparation side is real: the registry client
+   pulls and digest-verifies manifests, configs and layers; the unpacker
+   assembles the rootfs (whiteouts, hostile-entry rejection); each bundle
+   carries a runtime-spec `config.json`.
+
+   Boxcar was the intended provider, but its Origin sandbox spawns no
+   containers (`type: oci` is bookkeeping-only) and has no Windows
+   isolation, so the runtime ships its own provider in
+   `tpt-runtime-sandbox`: job objects with kill-on-close and a process
+   cap, restricted tokens, a handle-inheritance list admitting only the
+   log pipes, and a sanitized environment. The trait keeps the seam open,
+   so Boxcar can still be substituted later.
+
+   This is process-level isolation, not a container filesystem: Windows has
+   no `chroot`, so the rootfs is a source tree for the entry point, not a
+   jail. Linux (ELF) images are refused by name, since Windows cannot
+   execute them.
 2. **WASM sandbox/service** — the WASM backend's builder code
    (preopens, limits) is intended to migrate into a shared Boxcar WASM
    service layer so plugins across TPT projects get identical semantics.

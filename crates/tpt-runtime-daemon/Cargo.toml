@@ -21,6 +21,7 @@ tpt-runtime-network = { workspace = true }
 tpt-runtime-observe = { workspace = true }
 tpt-runtime-policy = { workspace = true }
 tpt-runtime-oci = { workspace = true }
+tpt-runtime-sandbox = { workspace = true }
 tpt-runtime-security = { workspace = true }
 tpt-runtime-storage = { workspace = true }
 tpt-runtime-wasm = { workspace = true }

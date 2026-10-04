@@ -3,7 +3,7 @@
 //! OCI support (SPEC §13): images are a *compatibility format*, not the
 //! fundamental architecture. The backend is built on Boxcar-compatible
 //! primitives — image resolution, layer storage, bundle preparation — which
-//! `tpt-boxcar` is slated to provide (SPEC §17).
+//! `tpt-boxcar` was slated to provide (SPEC §17).
 //!
 //! What exists today:
 //!
@@ -19,9 +19,12 @@
 //!   escapes, per-file caps).
 //! - [`image::pull`] — the pipeline: manifest → config → layers → rootfs
 //!   → bundle (cached; layers already in the store are not re-downloaded).
-//! - [`OciBackend`] — the [`ExecutionBackend`] implementation with a
-//!   configurable pull policy; `start` reports `not_implemented` until an
-//!   isolation provider exists (see `tpt-boxcar` / Origin, SPEC §17).
+//! - [`IsolationProvider`] — the isolation boundary. `start` hands the
+//!   prepared bundle to a provider; the runtime's own Windows provider
+//!   lives in `tpt-runtime-sandbox` (Boxcar was the intended one, but its
+//!   Origin sandbox spawns no containers and has no Windows isolation).
+//!   Without a provider `start` reports `not_implemented` — never a silent
+//!   success (SPEC §48).
 
 pub mod backend;
 pub mod bundle;
@@ -30,7 +33,7 @@ pub mod registry;
 pub mod store;
 pub mod unpack;
 
-pub use backend::{OciBackend, PullPolicy};
+pub use backend::{IsolationProvider, OciBackend, PullPolicy};
 pub use bundle::Bundle;
 pub use registry::{
     digest_of, verify_bytes, ImageConfig, ImageIndex, ImageManifest, RegistryClient,

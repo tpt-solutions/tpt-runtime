@@ -10,7 +10,10 @@ limitations.
 
 Since then: every crate has a README, CHANGELOG and crates.io metadata,
 runnable example manifests live in [examples/](examples/), and the workspace
-builds with zero clippy warnings.
+builds with zero clippy warnings. The OCI pull pipeline and Archon adapters
+(Phases 4–5) have landed; the Windows backend now compiles cleanly on Linux CI
+(Windows-only code is `cfg(windows)`-gated) and the docs job no longer requests
+the removed `rustdoc` rustup component.
 
 ## Packaging & Hygiene
 
@@ -18,7 +21,7 @@ builds with zero clippy warnings.
 - [x] crates.io metadata on every crate
 - [x] Runnable example manifests (`examples/`) with a test that parses them
 - [x] Zero clippy warnings across the workspace
-- [x] CI (build, test, clippy, fmt on Windows and Linux) *(GitHub Actions: fmt, clippy `-D warnings`, test, release build, docs — each on `ubuntu-latest` and `windows-latest`)*
+- [x] CI (build, test, clippy, fmt on Windows and Linux) *(GitHub Actions: fmt, clippy `-D warnings`, test, release build, docs — each on `ubuntu-latest` and `windows-latest`; Linux build fix and docs toolchain fix pushed, awaiting a green run)*
 - [ ] Publish crates to crates.io (dependency order)
 - [ ] Tagged release / version 0.1.0
 
@@ -28,7 +31,7 @@ builds with zero clippy warnings.
 - [x] Workload manifest
 - [x] Workload lifecycle
 - [x] Native Windows process backend
-- [ ] OCI backend through Boxcar-compatible primitives *(pull → verify → unpack → bundle pipeline are done; only the `start` boundary awaits the tpt-boxcar isolation provider)*
+- [x] OCI backend through Boxcar-compatible primitives *(pull → verify → unpack → bundle pipeline and the isolation boundary are all done; `tpt-runtime-sandbox` supplies the Windows provider, since Boxcar's Origin sandbox spawns no containers and has no Windows isolation)*
 - [x] WASM backend
 - [x] Logical volume abstraction
 - [x] Logical network abstraction *(intents + port allocation; enforcement for native processes is policy/audit — WASM is enforced)*
@@ -85,10 +88,10 @@ builds with zero clippy warnings.
 - [x] OCI image support *(Docker Registry v2 client: anonymous Bearer token flow, manifest/index resolution (linux/amd64), streaming blob downloads with sha256 verification and size caps)*
 - [x] Image cache *(raw blobs + unpacked bundles, content-addressed; cached layers skip re-download; a tagged+unpacked image short-circuits the pull; pull policy per backend: never / if-missing, `TPT_RUNTIME_OCI_PULL=0` opts the daemon out)*
 - [x] Filesystem preparation *(tar/tar+gzip layer extraction in order with overlay whiteouts (`.wh.`, opaque), per-file caps, mode bits; runtime-spec `config.json` written into each bundle)*
-- [ ] Workload lifecycle *(create/prepare resolve and pull for real; `start` reports `not_implemented` - there is genuinely no isolation provider to hand the bundle to yet, in Boxcar/Origin or here)*
-- [ ] Networking *(intents resolve at the manager level; in-container enforcement awaits the isolation provider)*
-- [ ] Volumes *(mounts resolve into `StartContext`; in-container views await the isolation provider)*
-- [ ] Capability integration *(env merges from the manifest; enforcement awaits the isolation provider)*
+- [x] Workload lifecycle *(create/prepare resolve and pull for real; `start` hands the bundle to a `SandboxProvider` — the Windows provider in `tpt-runtime-sandbox` runs it under a job object, restricted token and handle-inheritance list)*
+- [ ] Networking *(intents and exposed ports resolve and are validated at start — ports on a non-inbound mode and outbound modes without `network.outbound` are refused; in-workload enforcement needs HNS or per-app firewall rules, which the sandbox does not manage, so intent stays advisory)*
+- [ ] Volumes *(mounts are validated and passed through as `TPT_VOLUME_<NAME>` host paths, matching the Linux backend; in-workload confinement needs a filesystem jail, which Windows only offers via Hyper-V or WSL)*
+- [x] Capability integration *(env merges from the manifest; the sandbox adds privilege removal via the restricted token and a sanitized environment)*
 
 ## Phase 5 — Archon
 
@@ -152,8 +155,8 @@ builds with zero clippy warnings.
 - [x] runtime → Windows process
 - [x] runtime → WASM
 - [x] runtime OCI PLACEHOLDER
-- [ ] runtime → Archon
-- [ ] runtime → Boxcar
+- [ ] runtime → Archon *(storage and shared-buffer adapters landed under the `archon` feature; the IPC transport still awaits the substrate)*
+- [x] runtime → Boxcar *(the isolation seam is `IsolationProvider`; the Windows implementation lives in `tpt-runtime-sandbox`, since Boxcar's Origin sandbox spawns no containers and has no Windows isolation)*
 
 ### Compatibility tests
 - [ ] Windows

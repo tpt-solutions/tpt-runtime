@@ -1,6 +1,7 @@
 //! OCI execution backend on Boxcar-compatible primitives (SPEC §13, §17).
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use tpt_runtime_core::error::{ErrorKind, Result, RuntimeError};
 use tpt_runtime_model::execution::oci_ref::ImageReference;
 use tpt_runtime_model::workload::WorkloadSpec;
@@ -23,12 +24,31 @@ pub enum PullPolicy {
 /// Cap applied to any single blob download (decompression-bomb guard).
 pub const DEFAULT_MAX_BLOB_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
+/// The isolation boundary: what actually runs a prepared bundle.
+///
+/// Declared here, not in the implementing crate, so `tpt-runtime-oci` never
+/// depends on a provider. The runtime's own Windows implementation lives in
+/// `tpt-runtime-sandbox`; Boxcar could implement this same trait later.
+pub trait IsolationProvider: Send + Sync {
+    /// Starts `bundle` as an isolated workload and returns its handle.
+    ///
+    /// `spec` supplies the resource ceilings the provider should enforce, so
+    /// no provider needs to re-resolve policy.
+    fn start(
+        &self,
+        bundle: &Bundle,
+        spec: &WorkloadSpec,
+        ctx: &StartContext,
+    ) -> Result<Box<dyn WorkloadInstance>>;
+}
+
 /// OCI backend: pulls and prepares bundles from the image store and
-/// delegates the isolation boundary to a Boxcar-compatible provider.
+/// delegates the isolation boundary to a [`IsolationProvider`].
 pub struct OciBackend {
     store: ImageStore,
     pull_policy: PullPolicy,
     max_blob_bytes: u64,
+    provider: Option<Arc<dyn IsolationProvider>>,
 }
 
 impl OciBackend {
@@ -38,7 +58,22 @@ impl OciBackend {
             store: ImageStore::open(root)?,
             pull_policy: PullPolicy::default(),
             max_blob_bytes: DEFAULT_MAX_BLOB_BYTES,
+            provider: None,
         })
+    }
+
+    /// Installs the isolation provider that runs prepared bundles.
+    ///
+    /// Without one the backend still resolves and pulls images, but `start`
+    /// reports `not_implemented` — it never silently succeeds (SPEC §48).
+    pub fn with_provider(mut self, provider: Arc<dyn IsolationProvider>) -> Self {
+        self.provider = Some(provider);
+        self
+    }
+
+    /// Whether an isolation provider is installed.
+    pub fn has_provider(&self) -> bool {
+        self.provider.is_some()
     }
 
     /// Sets when the backend may pull from a registry.
@@ -135,20 +170,28 @@ impl ExecutionBackend for OciBackend {
         self.prepare_bundle(spec).map(|_| ())
     }
 
-    /// Starting an OCI workload requires a process/isolation provider
-    /// (Boxcar primitive). Until the `tpt-boxcar` integration lands this
-    /// fails explicitly — never silently (SPEC §48).
-    fn start(
-        &self,
-        _spec: &WorkloadSpec,
-        _ctx: &StartContext,
-    ) -> Result<Box<dyn WorkloadInstance>> {
-        Err(RuntimeError::new(
-            ErrorKind::NotImplemented,
-            "OCI workload start requires an isolation provider (tpt-boxcar / Origin primitives)",
-        )
-        .with_backend("oci")
-        .with_operation("start"))
+    /// Hands the prepared bundle to the isolation provider.
+    ///
+    /// With no provider installed this fails explicitly with
+    /// `not_implemented` rather than pretending to have started something
+    /// (SPEC §48).
+    fn start(&self, spec: &WorkloadSpec, ctx: &StartContext) -> Result<Box<dyn WorkloadInstance>> {
+        let provider = self.provider.as_ref().ok_or_else(|| {
+            RuntimeError::new(
+                ErrorKind::NotImplemented,
+                "OCI workload start requires an isolation provider; \
+                 install one with OciBackend::with_provider",
+            )
+            .with_backend("oci")
+            .with_operation("start")
+        })?;
+
+        let bundle = self
+            .prepare_bundle(spec)
+            .map_err(|err| err.with_backend("oci").with_operation("start"))?;
+        provider
+            .start(&bundle, spec, ctx)
+            .map_err(|err| err.with_backend("oci").with_workload(spec.name.clone()))
     }
 }
 
@@ -189,15 +232,61 @@ mod tests {
     }
 
     #[test]
-    fn start_fails_explicitly_pending_isolation_provider() {
+    fn start_fails_explicitly_without_a_provider() {
         let base = std::env::temp_dir().join(format!("tpt-oci-c-{}", std::process::id()));
         let backend = OciBackend::new(&base).unwrap();
+        assert!(!backend.has_provider());
         let ctx = ctx(&base);
         let err = match backend.start(&oci_spec("postgres:16"), &ctx) {
             Err(err) => err,
-            Ok(_) => panic!("oci start must fail pending an isolation provider"),
+            Ok(_) => panic!("oci start must fail when no isolation provider is installed"),
         };
         assert_eq!(err.kind, ErrorKind::NotImplemented);
+        assert_eq!(err.backend.as_deref(), Some("oci"));
+        assert!(err.message.contains("with_provider"), "{err}");
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn a_provider_can_be_installed() {
+        let base = std::env::temp_dir().join(format!("tpt-oci-f-{}", std::process::id()));
+        let backend = OciBackend::new(&base)
+            .unwrap()
+            .with_provider(std::sync::Arc::new(StubProvider));
+        assert!(backend.has_provider());
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    /// A provider that always fails, used to prove the wiring is reachable.
+    struct StubProvider;
+
+    impl IsolationProvider for StubProvider {
+        fn start(
+            &self,
+            _bundle: &Bundle,
+            _spec: &WorkloadSpec,
+            _ctx: &StartContext,
+        ) -> Result<Box<dyn WorkloadInstance>> {
+            Err(RuntimeError::new(
+                ErrorKind::System,
+                "stub provider reached",
+            ))
+        }
+    }
+
+    #[test]
+    fn provider_errors_are_attributed_to_the_oci_backend() {
+        let base = std::env::temp_dir().join(format!("tpt-oci-g-{}", std::process::id()));
+        let backend = OciBackend::new(&base)
+            .unwrap()
+            .with_provider(std::sync::Arc::new(StubProvider));
+        // The image is absent from the store, so prepare fails first; the
+        // point is that a provider being installed does not mask that.
+        let err = match backend.start(&oci_spec("postgres:16"), &ctx(&base)) {
+            Err(err) => err,
+            Ok(_) => panic!("expected a not-found error for an uncached image"),
+        };
+        assert_eq!(err.kind, ErrorKind::NotFound);
         assert_eq!(err.backend.as_deref(), Some("oci"));
         std::fs::remove_dir_all(&base).ok();
     }

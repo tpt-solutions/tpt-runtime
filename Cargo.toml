@@ -11,6 +11,7 @@ members = [
     "crates/tpt-runtime-windows",
     "crates/tpt-runtime-linux",
     "crates/tpt-runtime-oci",
+    "crates/tpt-runtime-sandbox",
     "crates/tpt-runtime-wasm",
     "crates/tpt-runtime-storage",
     "crates/tpt-runtime-network",
@@ -42,6 +43,7 @@ tpt-runtime-process = { path = "crates/tpt-runtime-process", version = "0.1.0" }
 tpt-runtime-windows = { path = "crates/tpt-runtime-windows", version = "0.1.0" }
 tpt-runtime-linux = { path = "crates/tpt-runtime-linux", version = "0.1.0" }
 tpt-runtime-oci = { path = "crates/tpt-runtime-oci", version = "0.1.0" }
+tpt-runtime-sandbox = { path = "crates/tpt-runtime-sandbox", version = "0.1.0" }
 tpt-runtime-wasm = { path = "crates/tpt-runtime-wasm", version = "0.1.0" }
 tpt-runtime-storage = { path = "crates/tpt-runtime-storage", version = "0.1.0" }
 tpt-runtime-network = { path = "crates/tpt-runtime-network", version = "0.1.0" }
@@ -89,6 +91,7 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_Diagnostics",
     "Win32_System_Diagnostics_Debug",
     "Win32_System_JobObjects",
+    "Win32_System_Pipes",
     "Win32_System_Threading",
 ] }
 
