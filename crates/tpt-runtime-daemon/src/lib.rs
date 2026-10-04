@@ -72,9 +72,20 @@ pub async fn run(config: DaemonConfig) -> Result<()> {
     // give precise errors; their start paths report pending integrations.
     manager.register_backend(Arc::new(tpt_runtime_windows::WindowsProcessBackend::new()));
     manager.register_backend(Arc::new(tpt_runtime_wasm::WasmBackend::new()?));
-    manager.register_backend(Arc::new(tpt_runtime_oci::OciBackend::new(
-        config.state_dir.join("images"),
-    )?));
+    // OCI images pull on demand (docker-like); TPT_RUNTIME_OCI_PULL=0
+    // keeps the backend strictly local.
+    let oci_pull = std::env::var_os("TPT_RUNTIME_OCI_PULL")
+        .map(|v| v != "0" && v != "false")
+        .unwrap_or(true);
+    let oci_policy = if oci_pull {
+        tpt_runtime_oci::PullPolicy::IfMissing
+    } else {
+        tpt_runtime_oci::PullPolicy::Never
+    };
+    manager.register_backend(Arc::new(
+        tpt_runtime_oci::OciBackend::new(config.state_dir.join("images"))?
+            .with_pull_policy(oci_policy),
+    ));
     manager.register_backend(Arc::new(tpt_runtime_linux::LinuxBackend::new()));
 
     eprintln!(

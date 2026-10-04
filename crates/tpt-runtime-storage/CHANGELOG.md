@@ -20,6 +20,15 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Corrupt `volume.json` metadata fails `StorageManager::open` loudly instead
   of dropping the volume silently (SPEC §45 storage failure, §48).
 
+### Added
+
+- Archon storage adapter (SPEC §16) behind the optional `archon` feature:
+  `StorageManager::open_archon_device` provisions a fixed-capacity
+  `VolumeBlockDevice` inside a volume's backing directory, so a
+  WAL-durable Archon `StorageEngine` lives inside a logical volume.
+  Provisioning validates names and caps device sizes; tests cover
+  engine persistence across reopen and bounds enforcement.
+
 ## [0.1.0]
 
 Initial release: directory-backed logical volumes.

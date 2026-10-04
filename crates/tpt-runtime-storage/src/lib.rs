@@ -10,6 +10,8 @@
 //! tpt volume mount project /workspace
 //! ```
 
+#[cfg(feature = "archon")]
+pub mod archon;
 pub mod volume;
 
 pub use volume::{StorageManager, Volume, VolumeInfo};

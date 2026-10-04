@@ -147,13 +147,13 @@ fn tagged_blob_without_rootfs_is_not_resolved() {
     let reference = ImageReference::parse("postgres:16").unwrap();
     store.tag(&reference, DIGEST).unwrap();
 
-    // The blob's rootfs disappears (torn unpack, tampering): resolution
-    // must refuse to hand out the bundle.
-    let blob = base.join("blobs").join("sha256").join(DIGEST_HEX);
-    std::fs::remove_dir_all(blob.join("rootfs")).unwrap();
+    // The unpacked bundle's rootfs disappears (torn unpack, tampering):
+    // resolution must refuse to hand out the bundle.
+    let bundle = base.join("bundles").join(DIGEST_HEX);
+    std::fs::remove_dir_all(bundle.join("rootfs")).unwrap();
     let err = store.resolve(&reference).unwrap_err();
     assert_eq!(err.kind, ErrorKind::NotFound);
-    assert!(err.message.contains("rootfs"));
+    assert!(err.message.contains("not unpacked"), "{err}");
 
     std::fs::remove_dir_all(&base).ok();
 }

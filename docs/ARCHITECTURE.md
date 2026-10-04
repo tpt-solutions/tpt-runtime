@@ -47,13 +47,13 @@ Supporting crates:
 | `tpt-runtime-process` | `ExecutionBackend` / `WorkloadInstance` traits, log capture (§10) |
 | `tpt-runtime-windows` | Job Object isolation, kill-tree, env allowlist, job accounting (§12) |
 | `tpt-runtime-wasm` | wasmtime + WASI p1, fuel/epoch limits, preopened volumes (§14) |
-| `tpt-runtime-oci` | image references, bundle model, content store; start awaits Boxcar (§13) |
+| `tpt-runtime-oci` | image references, registry pull (v2 + token auth, digest-verified), layer unpacking (whiteouts), content store, bundle preparation; `start` awaits an isolation provider (§13) |
 | `tpt-runtime-linux` | WSL-backed execution, layered strategy phase 1 (§11) |
-| `tpt-runtime-storage` | logical volumes over host directories (§15) |
+| `tpt-runtime-storage` | logical volumes over host directories (§15); optional `archon` feature: volumes host Archon block devices (§16) |
 | `tpt-runtime-network` | network intents and port allocation (§18) |
 | `tpt-runtime-device` | logical device registry, claims (§19) |
 | `tpt-runtime-gpu` | NVIDIA discovery and telemetry via `nvidia-smi` (§20) |
-| `tpt-runtime-ipc` | request/response envelope, NDJSON framing (§22, §30) |
+| `tpt-runtime-ipc` | request/response envelope, NDJSON framing (§22, §30); optional `archon` feature: capability-gated shared page buffers (§16) |
 | `tpt-runtime-security` | capability-gated secret store (§24) |
 | `tpt-runtime-observe` | event hub (broadcast + JSONL), metrics registry (§27, §28) |
 | `tpt-runtime-api` | named-pipe server, CLI client (§30) |
@@ -128,14 +128,18 @@ Known MVP limitations (documented, not hidden):
 Archon is the substrate; the runtime keeps it swappable:
 
 1. **Storage** — `tpt-runtime-storage::StorageManager` is the seam.
-   Directory-backed `Volume` today; an Archon-backed store implements the
-   same `create/get/mount_path` surface with page-cache and dedup behind it.
+   Directory-backed `Volume` today; with the optional `archon` feature a
+   volume provisions a fixed-capacity Archon `BlockDevice`
+   (`open_archon_device`), so a WAL-durable Archon `StorageEngine` lives
+   inside a logical volume and survives reopen.
 2. **IPC** — `tpt-runtime-ipc` defines the envelope/framing; an Archon
    transport (shared-memory channels) can replace the named-pipe byte
    stream without touching API semantics.
-3. **Zero-copy buffers** — `WorkloadInstance::stats` and log capture are
-   the current copy points; Archon shared buffers would replace log and
-   media paths (Phase 5), starting with the WASM stdout pipe.
+3. **Zero-copy buffers** — with the `archon` feature, `SharedBufferPool`
+   hosts pages behind the bridge's `UnifiedPageCache`: reads borrow pages
+   in place (no copy), writes are capability-gated per page and revocation
+   is enforced by the cache. Wiring the log/stats copy points onto it is
+   the remaining step.
 4. **Resource accounting** — job-object sampling feeds
    `tpt-runtime-observe::MetricsRegistry`; an Archon accounting feed would
    push the same `ResourceUsage` records.
@@ -145,9 +149,13 @@ Archon is the substrate; the runtime keeps it swappable:
 Boxcar provides workload-level isolation and packaging:
 
 1. **OCI start** — `tpt-runtime-oci::OciBackend::start` is the reserved
-   seam: it prepares a validated `Bundle` and awaits a Boxcar
-   "run this bundle isolated" primitive (image pull, layer unpack, and
-   the isolation boundary).
+   seam. The preparation side is real and Boxcar-compatible today: the
+   registry client pulls and digest-verifies manifests, configs and
+   layers; the unpacker assembles the rootfs (whiteouts, hostile-entry
+   rejection); each bundle carries a runtime-spec `config.json`. What
+   Boxcar/Origin does not provide yet — and what `start` therefore fails
+   loudly without — is the "run this bundle isolated" primitive itself
+   (Origin's own OCI support is bookkeeping-only at the time of writing).
 2. **WASM sandbox/service** — the WASM backend's builder code
    (preopens, limits) is intended to migrate into a shared Boxcar WASM
    service layer so plugins across TPT projects get identical semantics.
@@ -185,7 +193,8 @@ subscribe}`, `volumes.{create,list,remove}`, `devices.list`,
 | Identifiers / events | `core/src/{id,event}.rs` tests |
 | runtime → Windows process | `windows` unit tests + `workload/tests/manager_e2e.rs` |
 | runtime → WASM | `wasm/tests/wasi.rs` (hello, fuel, stop, validation) |
-| runtime → OCI | `oci` store/bundle/backend tests + `oci/tests/malicious_image.rs` (start = explicit pending) |
+| runtime → OCI | fake-registry e2e (`oci/tests/registry_pull.rs`: pull, token auth, whiteouts, cache, digest-mismatch rejection, index selection); store/bundle/backend tests + `oci/tests/malicious_image.rs` (start = explicit pending) |
+| Archon adapters | `storage/src/archon.rs` + `ipc/src/shared.rs` under the `archon` feature (volume-backed engines, capability-gated pages) |
 | Failure: workload crashes | watcher → `workload.failed` (e2e) |
 | Failure: runtime restart | `windows` job tests: dropping the last job handle reaps the workload |
 | Failure: resource exhaustion | WASM fuel + adversarial growth (`wasm/tests/adversarial.rs`); OS-level commit limit (`windows` job tests) |

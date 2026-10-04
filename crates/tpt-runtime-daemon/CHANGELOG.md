@@ -21,6 +21,11 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - When GPUs are discovered at startup, the daemon also starts the GPU
   telemetry sampler (5s period) and exposes it to the API surface.
 
+### Changed
+
+- OCI images now pull on demand (pull policy `if-missing`); set
+  `TPT_RUNTIME_OCI_PULL=0` to keep the backend strictly local.
+
 ## [0.1.0]
 
 Initial release: the Windows host daemon.

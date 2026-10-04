@@ -9,7 +9,12 @@ readme = "README.md"
 keywords = ["ipc", "named-pipes", "ndjson", "framing", "protocol"]
 categories = ["network-programming"]
 
+[features]
+archon = ["dep:tpt-archon-bridge", "dep:tpt-archon-core"]
+
 [dependencies]
+tpt-archon-bridge = { version = "0.1", optional = true }
+tpt-archon-core = { version = "0.1", optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["io-util", "net"] }

@@ -4,7 +4,7 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 
 Status after the first implementation pass: the MVP (§43) is working end to
 end on Windows — daemon, CLI, Windows-process and WASM backends, lifecycle,
-events, observability — with 50 test suites (159 tests) green. See
+events, observability — with 50 test suites (171 tests) green. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the map and known MVP
 limitations.
 
@@ -28,7 +28,7 @@ builds with zero clippy warnings.
 - [x] Workload manifest
 - [x] Workload lifecycle
 - [x] Native Windows process backend
-- [ ] OCI backend through Boxcar-compatible primitives *(refs, bundle model and content store done; `start` awaits the tpt-boxcar isolation provider)*
+- [ ] OCI backend through Boxcar-compatible primitives *(pull → verify → unpack → bundle pipeline are done; only the `start` boundary awaits the tpt-boxcar isolation provider)*
 - [x] WASM backend
 - [x] Logical volume abstraction
 - [x] Logical network abstraction *(intents + port allocation; enforcement for native processes is policy/audit — WASM is enforced)*
@@ -82,22 +82,22 @@ builds with zero clippy warnings.
 
 ## Phase 4 — OCI
 
-- [ ] OCI image support *(reference parsing, bundle model and content store done; registry pull awaits Boxcar)*
-- [ ] Image cache *(local content-addressed store exists; pull/pin policies pending)*
-- [ ] Filesystem preparation
-- [ ] Workload lifecycle *(start reports `not_implemented` pending Boxcar)*
-- [ ] Networking
-- [ ] Volumes
-- [ ] Capability integration
+- [x] OCI image support *(Docker Registry v2 client: anonymous Bearer token flow, manifest/index resolution (linux/amd64), streaming blob downloads with sha256 verification and size caps)*
+- [x] Image cache *(raw blobs + unpacked bundles, content-addressed; cached layers skip re-download; a tagged+unpacked image short-circuits the pull; pull policy per backend: never / if-missing, `TPT_RUNTIME_OCI_PULL=0` opts the daemon out)*
+- [x] Filesystem preparation *(tar/tar+gzip layer extraction in order with overlay whiteouts (`.wh.`, opaque), per-file caps, mode bits; runtime-spec `config.json` written into each bundle)*
+- [ ] Workload lifecycle *(create/prepare resolve and pull for real; `start` reports `not_implemented` - there is genuinely no isolation provider to hand the bundle to yet, in Boxcar/Origin or here)*
+- [ ] Networking *(intents resolve at the manager level; in-container enforcement awaits the isolation provider)*
+- [ ] Volumes *(mounts resolve into `StartContext`; in-container views await the isolation provider)*
+- [ ] Capability integration *(env merges from the manifest; enforcement awaits the isolation provider)*
 
 ## Phase 5 — Archon
 
-- [ ] Archon storage adapter
-- [ ] Archon IPC adapter
-- [ ] Shared buffer support
-- [ ] Capability integration
+- [x] Archon storage adapter *(feature `archon`: volumes provision fixed-capacity Archon `BlockDevice`s - a WAL-durable `StorageEngine` lives inside a logical volume and survives reopen; provisioning validates names and caps sizes)*
+- [ ] Archon IPC adapter *(the page-cache seam is in place via the `archon` feature; a full Archon transport for the API pipe awaits the substrate)*
+- [x] Shared buffer support *(feature `archon`: page pool over the bridge's `UnifiedPageCache` - reads borrow pages in place with zero copies, writes are capability-gated per page and revocation is enforced by the cache)*
+- [ ] Capability integration *(runtime capabilities now map onto bridge `Capability` tokens for shared buffers; workload-facing integration awaits the substrate)*
 - [ ] Resource accounting integration
-- [ ] Zero-copy paths where justified
+- [ ] Zero-copy paths where justified *(shared-buffer reads are zero-copy; the log/stats copy points are unchanged)*
 
 ## Phase 6 — Linux
 
@@ -151,7 +151,7 @@ builds with zero clippy warnings.
 ### Integration tests
 - [x] runtime → Windows process
 - [x] runtime → WASM
-- [x] runtime → OCI *(store/bundle/backend plus the malicious-image suite; `start` itself awaits Boxcar)*
+- [x] runtime OCI PLACEHOLDER
 - [ ] runtime → Archon
 - [ ] runtime → Boxcar
 

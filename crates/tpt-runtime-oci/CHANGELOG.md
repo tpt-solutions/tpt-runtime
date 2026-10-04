@@ -30,6 +30,37 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Malicious image test suite (SPEC §46): poisoned tags, malformed digests,
   rootfs-less blobs and hostile bundle entry points.
 
+### Added
+
+- **Registry pull** (SPEC §13): Docker Registry HTTP API v2 client —
+  anonymous Bearer token flow, manifest and index resolution (picks
+  `linux/amd64`, falls back to any linux), streaming blob downloads with
+  sha256 verification and a configurable size cap (decompression-bomb
+  guard). Digest-pinned references verify served bytes before use.
+- **Layer unpacking**: tar and tar+gzip layers extracted in manifest order
+  with overlay whiteout semantics (`.wh.<name>` deletes, `.wh..wh..opq`
+  makes a directory opaque); hostile layers are rejected loudly — `..`
+  traversal, absolute escapes and out-of-rootfs symlink targets never
+  touch the host; per-file extraction cap; unix mode bits preserved.
+- **Content store rework**: raw blobs (manifests, configs, layers) live
+  content-addressed under `blobs/sha256/`, unpacked bundles under
+  `bundles/<digest>/` with the image's run defaults (`image.json`) and a
+  runtime-spec `config.json`. Cached layers skip re-download; a tagged and
+  unpacked image short-circuits a pull entirely.
+- **Pull pipeline + policy**: `OciBackend` gains `PullPolicy`
+  (`Never` by default for the library; `IfMissing` in the daemon, disable
+  with `TPT_RUNTIME_OCI_PULL=0`), `with_max_blob_bytes`, and loopback
+  registries served over plain HTTP. `resolve` fills bundle argv/env/cwd
+  from the image config (real PascalCase keys).
+- Fake-registry integration suite (SPEC §45): end-to-end pull with token
+  auth, whiteouts and cache reuse; corrupt-blob digest rejection; index
+  platform selection; backend pull-policy path.
+
+### Fixed
+
+- `resolve` now derives `args`/`env`/`working_dir` from the stored image
+  defaults instead of returning an empty bundle; user args still append.
+
 ## [0.1.0]
 
 Initial release: OCI references, content store and bundle preparation.

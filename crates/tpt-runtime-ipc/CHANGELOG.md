@@ -15,6 +15,15 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   clients.
 - Schema-version negotiation in the handshake.
 
+### Added
+
+- Archon shared buffers (SPEC §16) behind the optional `archon` feature:
+  `SharedBufferPool` hosts fixed-size pages over the bridge's
+  `UnifiedPageCache`. Reads borrow pages in place (zero-copy via
+  `CapabilityGrant`), writes are the single copy, capabilities are minted
+  per page and revocation is enforced by the cache. Pool size, bounds and
+  forged/revoked capabilities are tested.
+
 ## [0.1.0]
 
 Initial release: the local API envelope and framing.

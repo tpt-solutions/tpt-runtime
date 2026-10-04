@@ -14,6 +14,8 @@
 
 pub mod envelope;
 pub mod framing;
+#[cfg(feature = "archon")]
+pub mod shared;
 
 pub use envelope::{Request, Response};
 pub use framing::{read_message, write_message};

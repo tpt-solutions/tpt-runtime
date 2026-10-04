@@ -9,8 +9,12 @@ readme = "README.md"
 keywords = ["volumes", "storage", "persistence", "host-directories", "filesystem"]
 categories = ["filesystem"]
 
+[features]
+archon = ["dep:tpt-archon-core"]
+
 [dependencies]
 serde = { workspace = true }
+tpt-archon-core = { version = "0.1", optional = true }
 serde_json = { workspace = true }
 tpt-runtime-core = { workspace = true }
 tpt-runtime-model = { workspace = true }
