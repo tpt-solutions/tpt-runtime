@@ -114,13 +114,13 @@ fn bundle_entry_points_cannot_escape_the_rootfs() {
 
     let hostile = [
         "../../host/pwn",
-        "/bin/sh",
         "",
+        "/",
+        "a/../../..",
         // Windows-style paths: not valid OCI entry points on any host.
         "C:\\Windows\\System32\\cmd.exe",
         "dir\\file",
         "C:/Users/x/app",
-        "a/../../..",
     ];
     for entry in hostile {
         assert!(
@@ -129,7 +129,14 @@ fn bundle_entry_points_cannot_escape_the_rootfs() {
         );
     }
 
-    for entry in ["bin/app", "usr/local/bin/app", "./bin/app"] {
+    // Absolute entries are rootfs-relative by OCI convention.
+    for entry in [
+        "bin/app",
+        "usr/local/bin/app",
+        "./bin/app",
+        "/bin/sh",
+        "/hello",
+    ] {
         assert!(
             bundle(vec![entry.to_owned()]).validate().is_ok(),
             "benign entry point '{entry}' must be accepted"

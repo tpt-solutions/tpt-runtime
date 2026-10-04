@@ -62,11 +62,14 @@ impl Bundle {
     }
 }
 
-/// Rootfs path check: rejects absolute entries, `..` traversal and
-/// Windows-style paths (backslashes, drive-letter colons). OCI entry
-/// points are POSIX-style paths inside the rootfs.
+/// Rootfs path check. A leading `/` is rootfs-relative by OCI convention
+/// (the containerized process runs chrooted, so `/hello` means
+/// `<rootfs>/hello`); what must never pass is `..` traversal above the
+/// root, Windows-style paths (backslashes, drive-letter colons) and empty
+/// entries.
 fn sanitize_rootfs_entry(_rootfs: &Path, entry: &str) -> bool {
-    if entry.starts_with('/') || entry.contains('\\') || entry.contains(':') {
+    let entry = entry.strip_prefix('/').unwrap_or(entry);
+    if entry.is_empty() || entry.contains('\\') || entry.contains(':') {
         return false;
     }
     let mut depth: i64 = 0;
@@ -82,7 +85,7 @@ fn sanitize_rootfs_entry(_rootfs: &Path, entry: &str) -> bool {
             _ => depth += 1,
         }
     }
-    !entry.is_empty()
+    depth > 0
 }
 
 #[cfg(test)]
@@ -97,14 +100,26 @@ mod tests {
         ));
         assert!(!sanitize_rootfs_entry(
             Path::new("/bundles/b"),
-            "/absolute/path"
+            "a/../../.."
         ));
         assert!(!sanitize_rootfs_entry(Path::new("/bundles/b"), ""));
+        assert!(!sanitize_rootfs_entry(Path::new("/bundles/b"), "/"));
+        assert!(!sanitize_rootfs_entry(
+            Path::new("/bundles/b"),
+            "C:\\Windows\\System32\\cmd.exe"
+        ));
+        assert!(!sanitize_rootfs_entry(
+            Path::new("/bundles/b"),
+            "C:/Users/x/app"
+        ));
+        // Absolute entries are rootfs-relative by OCI convention.
         assert!(sanitize_rootfs_entry(Path::new("/bundles/b"), "bin/sh"));
         assert!(sanitize_rootfs_entry(
             Path::new("/bundles/b"),
             "usr/local/bin/app"
         ));
+        assert!(sanitize_rootfs_entry(Path::new("/bundles/b"), "/bin/sh"));
+        assert!(sanitize_rootfs_entry(Path::new("/bundles/b"), "/hello"));
     }
 
     #[test]
