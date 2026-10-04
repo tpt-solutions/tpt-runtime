@@ -1,14 +1,18 @@
 //! Native Windows process execution (SPEC §12).
 
+#[cfg(windows)]
 use std::path::{Path, PathBuf};
+#[cfg(windows)]
 use std::process::{Command, Stdio};
+#[cfg(windows)]
 use std::sync::{Arc, Mutex};
 use tpt_runtime_core::error::{ErrorKind, Result, RuntimeError};
+#[cfg(windows)]
 use tpt_runtime_core::ResourceUsage;
 use tpt_runtime_model::workload::WorkloadSpec;
-use tpt_runtime_process::{
-    ExecutionBackend, ExitStatus, LogCapture, StartContext, StopMode, WorkloadInstance,
-};
+use tpt_runtime_process::{ExecutionBackend, StartContext, WorkloadInstance};
+#[cfg(windows)]
+use tpt_runtime_process::{ExitStatus, LogCapture, StopMode};
 
 #[cfg(windows)]
 mod job;
@@ -178,6 +182,7 @@ impl ExecutionBackend for WindowsProcessBackend {
     }
 }
 
+#[cfg(windows)]
 fn windows_spec(spec: &WorkloadSpec) -> Result<tpt_runtime_model::execution::WindowsProcessSpec> {
     match &spec.execution {
         tpt_runtime_model::execution::ExecutionSpec::WindowsProcess(spec) => Ok(spec.clone()),
@@ -188,6 +193,7 @@ fn windows_spec(spec: &WorkloadSpec) -> Result<tpt_runtime_model::execution::Win
     }
 }
 
+#[cfg(windows)]
 /// Live handle for one Windows workload.
 struct WindowsProcessInstance {
     pid: u32,
@@ -199,6 +205,7 @@ struct WindowsProcessInstance {
     _stderr: LogCapture,
 }
 
+#[cfg(windows)]
 impl WorkloadInstance for WindowsProcessInstance {
     fn stats(&self) -> Result<ResourceUsage> {
         let mut usage = ResourceUsage::default();
@@ -248,6 +255,7 @@ impl WorkloadInstance for WindowsProcessInstance {
     }
 }
 
+#[cfg(windows)]
 /// Resolves a program name through PATH when it has no directory part.
 fn resolve_program(program: &str) -> Result<PathBuf> {
     let candidate = Path::new(program);
@@ -302,11 +310,6 @@ fn sanitized_environment() -> Vec<(String, String)> {
         vars.push(("Path".to_owned(), path.to_string_lossy().to_string()));
     }
     vars
-}
-
-#[cfg(not(windows))]
-fn sanitized_environment() -> Vec<(String, String)> {
-    Vec::new()
 }
 
 #[cfg(all(test, windows))]
