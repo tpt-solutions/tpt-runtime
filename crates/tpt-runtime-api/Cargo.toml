@@ -23,3 +23,9 @@ tpt-runtime-workload = { workspace = true }
 
 [dev-dependencies]
 uuid = { workspace = true }
+tpt-runtime-device = { workspace = true }
+tpt-runtime-network = { workspace = true }
+tpt-runtime-policy = { workspace = true }
+tpt-runtime-security = { workspace = true }
+tpt-runtime-storage = { workspace = true }
+tpt-runtime-windows = { workspace = true }

@@ -6,6 +6,7 @@
 //! The engine is intentionally pure: it takes host capacity plus a request
 //! and returns decisions; applying decisions is the backends' job.
 
+pub mod host;
 pub mod policy;
 
 pub use policy::{HostCapacity, PolicyDecision, PolicyEngine, ResourceClass, ResourcePolicy};

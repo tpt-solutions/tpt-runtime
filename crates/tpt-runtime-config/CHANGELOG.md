@@ -22,6 +22,15 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   detection, topological `start_order` / reverse `stop_order`, and
   `materialize` (authoritative entry name + `tpt.project` label).
 
+### Added
+
+- `DaemonConfig.tcp`: TCP transport selection (`TPT_RUNTIME_TCP` env).
+  When set, the daemon serves and clients connect over `host:port`
+  instead of the named pipe (SPEC 39 remote runtime). Unauthenticated -
+  trusted networks only.
+- `DaemonConfig::registry_file`: the registry snapshot location used for
+  restart reconciliation.
+
 ## [0.1.0]
 
 Initial release: declarative configuration for workloads and the daemon.

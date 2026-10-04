@@ -15,6 +15,13 @@ pub struct DaemonConfig {
     pub pipe_name: String,
     /// Maximum concurrent API clients.
     pub max_clients: usize,
+    /// TCP listener (`host:port`) for remote access (SPEC §39). When set,
+    /// it replaces the named pipe for both server and clients.
+    ///
+    /// Security: the TCP transport has **no authentication** - it is for
+    /// trusted networks only (the named pipe carries Windows ACLs; TCP
+    /// carries nothing). Keep it loopback or behind a firewall you trust.
+    pub tcp: Option<String>,
 }
 
 impl Default for DaemonConfig {
@@ -23,6 +30,7 @@ impl Default for DaemonConfig {
             state_dir: default_state_dir(),
             pipe_name: pipe_name_from_env().unwrap_or_else(|| DEFAULT_PIPE_NAME.to_owned()),
             max_clients: 32,
+            tcp: tcp_from_env(),
         }
     }
 }
@@ -38,6 +46,11 @@ impl DaemonConfig {
         if let Ok(pipe) = std::env::var("TPT_RUNTIME_PIPE") {
             if !pipe.is_empty() {
                 config.pipe_name = pipe;
+            }
+        }
+        if let Ok(tcp) = std::env::var("TPT_RUNTIME_TCP") {
+            if !tcp.is_empty() {
+                config.tcp = Some(tcp);
             }
         }
         config
@@ -61,6 +74,12 @@ impl DaemonConfig {
     /// `secrets.json` under the state directory.
     pub fn secrets_file(&self) -> PathBuf {
         self.state_dir.join("secrets.json")
+    }
+
+    /// `registry.jsonl` under the state directory: the workload registry
+    /// snapshot used for restart reconciliation (SPEC Phase 9).
+    pub fn registry_file(&self) -> PathBuf {
+        self.state_dir.join("registry.jsonl")
     }
 
     /// Ensures the state directory layout exists.
@@ -92,6 +111,12 @@ fn default_state_dir() -> PathBuf {
 
 fn pipe_name_from_env() -> Option<String> {
     std::env::var("TPT_RUNTIME_PIPE")
+        .ok()
+        .filter(|p| !p.is_empty())
+}
+
+fn tcp_from_env() -> Option<String> {
+    std::env::var("TPT_RUNTIME_TCP")
         .ok()
         .filter(|p| !p.is_empty())
 }

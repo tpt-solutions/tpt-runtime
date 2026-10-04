@@ -109,6 +109,24 @@ pub struct WorkloadManager {
     devices: Arc<Mutex<DeviceRegistry>>,
     secrets: Arc<Mutex<SecretStore>>,
     policy: PolicyEngine,
+    snapshot_path: Option<PathBuf>,
+}
+
+/// One persisted record in the registry snapshot (SPEC Phase 9: snapshots,
+/// near-term form). Enough to reconstruct the record after a daemon
+/// restart for audit, log access and reconciliation.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct SnapshotEntry {
+    id: WorkloadId,
+    spec: WorkloadSpec,
+    state: WorkloadState,
+    created_at: Timestamp,
+    started_at: Option<Timestamp>,
+    finished_at: Option<Timestamp>,
+    exit_code: Option<i32>,
+    killed: bool,
+    log_dir: PathBuf,
+    restarts: u32,
 }
 
 impl WorkloadManager {
@@ -135,6 +153,155 @@ impl WorkloadManager {
             devices,
             secrets,
             policy,
+            snapshot_path: None,
+        }
+    }
+
+    /// Persists the registry to `path` after every lifecycle transition, so
+    /// a restart can reconcile records (see [`Self::reconcile`]).
+    pub fn with_snapshot_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.snapshot_path = Some(path.into());
+        self
+    }
+
+    /// Reconciles a previous daemon's snapshot after a restart (SPEC Phase
+    /// 9, registry snapshot form). Terminal records survive as history
+    /// (`tpt logs` keeps working); `Created` workloads stay startable;
+    /// anything that was mid-flight is marked `Failed` with `killed` set —
+    /// job kill-on-close has already reaped its process. Returns the
+    /// number of records reconciled. An entry whose name is already held
+    /// by a live record is discarded in favor of the live record.
+    pub fn reconcile(&self) -> usize {
+        let Some(path) = &self.snapshot_path else {
+            return 0;
+        };
+        let Ok(raw) = std::fs::read_to_string(path) else {
+            return 0;
+        };
+        let Ok(entries) = serde_json::from_str::<Vec<SnapshotEntry>>(&raw) else {
+            // A torn or corrupt snapshot is dropped, not trusted.
+            return 0;
+        };
+
+        let mut reconciled = 0;
+        for entry in entries {
+            let state = match entry.state {
+                WorkloadState::Starting | WorkloadState::Running => {
+                    // The daemon died mid-run; kill-on-close reaped the
+                    // process. Attribute it (SPEC §48) instead of dropping
+                    // the record.
+                    self.events.emit(
+                        RuntimeEvent::now(EventKind::WorkloadFailed)
+                            .with_workload(entry.id.clone())
+                            .with_field("reason", "runtime restarted before the workload finished"),
+                    );
+                    WorkloadState::Failed
+                }
+                other => other,
+            };
+
+            let exit = if state == WorkloadState::Failed && entry.state.is_active() {
+                Some(ExitStatus {
+                    code: None,
+                    killed: true,
+                    failed: true,
+                })
+            } else {
+                entry.exit_code.map(|code| ExitStatus {
+                    code: Some(code),
+                    killed: entry.killed,
+                    failed: !entry.killed && code != 0,
+                })
+            };
+
+            // Created workloads stay startable: re-resolve their volume
+            // mounts now, exactly as `create` would have.
+            let mut mounts = Vec::new();
+            if state == WorkloadState::Created {
+                for mount in &entry.spec.volumes {
+                    match self.storage.lock().unwrap().mount_path(&mount.name) {
+                        Ok(host_path) => mounts.push(ResolvedMount {
+                            name: mount.name.clone(),
+                            mount: mount.mount.clone(),
+                            host_path,
+                            mode: mount.mode,
+                        }),
+                        Err(_) => continue,
+                    }
+                }
+            }
+
+            let record = WorkloadRecord {
+                spec: entry.spec.clone(),
+                state,
+                created_at: entry.created_at,
+                started_at: entry.started_at,
+                finished_at: entry.finished_at,
+                exit,
+                capabilities: CapabilitySet::from_names(
+                    entry.spec.capabilities.iter().map(String::as_str),
+                ),
+                network: None,
+                mounts,
+                log_dir: entry.log_dir.clone(),
+                restarts: entry.restarts,
+                instance: None,
+            };
+            let inserted = {
+                let mut records = self.records.lock().unwrap();
+                if records.values().any(|r| r.spec.name == record.spec.name) {
+                    false
+                } else {
+                    records.insert(entry.id.clone(), record);
+                    true
+                }
+            };
+            if inserted {
+                reconciled += 1;
+            }
+        }
+        reconciled
+    }
+
+    /// Rewrites the registry snapshot atomically from current records.
+    fn persist_snapshot(&self) {
+        Self::write_snapshot(&self.snapshot_path, &self.records);
+    }
+
+    /// Snapshot writer shared with watcher threads (which hold the pieces,
+    /// not the manager).
+    fn write_snapshot(
+        path: &Option<PathBuf>,
+        records: &Mutex<BTreeMap<WorkloadId, WorkloadRecord>>,
+    ) {
+        let Some(path) = path else {
+            return;
+        };
+        let entries: Vec<SnapshotEntry> = {
+            let records = records.lock().unwrap();
+            records
+                .iter()
+                .map(|(id, r)| SnapshotEntry {
+                    id: id.clone(),
+                    spec: r.spec.clone(),
+                    state: r.state,
+                    created_at: r.created_at,
+                    started_at: r.started_at,
+                    finished_at: r.finished_at,
+                    exit_code: r.exit.as_ref().and_then(|e| e.code),
+                    killed: r.exit.as_ref().map(|e| e.killed).unwrap_or(false),
+                    log_dir: r.log_dir.clone(),
+                    restarts: r.restarts,
+                })
+                .collect()
+        };
+        let raw = match serde_json::to_string(&entries) {
+            Ok(raw) => raw,
+            Err(_) => return,
+        };
+        let tmp = path.with_extension("tmp");
+        if std::fs::write(&tmp, raw).is_ok() {
+            let _ = std::fs::rename(&tmp, path);
         }
     }
 
@@ -246,6 +413,7 @@ impl WorkloadManager {
         self.emit(EventKind::WorkloadCreated, &id);
         self.emit(EventKind::WorkloadResolved, &id);
         self.emit(EventKind::WorkloadPrepared, &id);
+        self.persist_snapshot();
         Ok(id)
     }
 
@@ -354,6 +522,7 @@ impl WorkloadManager {
 
         self.emit(EventKind::WorkloadStarted, id);
         self.spawn_watcher(id.clone(), spec.name.clone(), instance, network);
+        self.persist_snapshot();
         Ok(())
     }
 
@@ -487,6 +656,8 @@ impl WorkloadManager {
         self.emit(EventKind::WorkloadDestroyed, id);
         self.metrics.remove(id);
         records.remove(id);
+        drop(records);
+        self.persist_snapshot();
         Ok(())
     }
 
@@ -621,6 +792,7 @@ impl WorkloadManager {
         let network_manager = self.network.clone();
         let devices = self.devices.clone();
         let records = self.records.clone();
+        let snapshot_path = self.snapshot_path.clone();
 
         std::thread::spawn(move || {
             let exit_rx = instance.exit();
@@ -660,6 +832,8 @@ impl WorkloadManager {
                 .with_field("exit_code", status.code)
                 .with_field("killed", status.killed),
             );
+
+            Self::write_snapshot(&snapshot_path, &records);
         });
     }
 

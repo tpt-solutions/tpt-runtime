@@ -23,6 +23,10 @@ struct Cli {
     /// Print raw JSON responses instead of formatted output.
     #[arg(long, global = true)]
     json: bool,
+    /// Talk to a remote daemon at host:port instead of the local pipe
+    /// (SPEC §39; unauthenticated - trusted networks only).
+    #[arg(long, global = true, value_name = "HOST:PORT")]
+    remote: Option<String>,
     #[command(subcommand)]
     command: Command,
 }
@@ -159,6 +163,9 @@ enum DaemonAction {
         /// Pipe name override.
         #[arg(long)]
         pipe: Option<String>,
+        /// TCP listener override (host:port), forwarded to the daemon.
+        #[arg(long)]
+        tcp: Option<String>,
     },
     /// Stop the daemon.
     Stop,
@@ -227,10 +234,17 @@ fn main() {
 }
 
 async fn dispatch(cli: Cli) -> Result<()> {
-    let config = DaemonConfig::from_env();
+    let mut config = DaemonConfig::from_env();
+    if let Some(remote) = &cli.remote {
+        config.tcp = Some(remote.clone());
+    }
     match cli.command {
         Command::Daemon { action } => match action {
-            DaemonAction::Start { state_dir, pipe } => start_daemon(state_dir, pipe),
+            DaemonAction::Start {
+                state_dir,
+                pipe,
+                tcp,
+            } => start_daemon(state_dir, pipe, tcp.or_else(|| cli.remote.clone())),
             DaemonAction::Stop => {
                 let mut client = ApiClient::connect(&config).await?;
                 client.call("daemon.shutdown", Value::Null).await?;
@@ -637,7 +651,11 @@ fn init_project(template: &str, force: bool) -> Result<()> {
     Ok(())
 }
 
-fn start_daemon(state_dir: Option<String>, pipe: Option<String>) -> Result<()> {
+fn start_daemon(
+    state_dir: Option<String>,
+    pipe: Option<String>,
+    tcp: Option<String>,
+) -> Result<()> {
     use std::os::windows::process::CommandExt;
     use std::process::Command;
 
@@ -653,6 +671,10 @@ fn start_daemon(state_dir: Option<String>, pipe: Option<String>) -> Result<()> {
         env_config.pipe_name = pipe.clone();
         command.env("TPT_RUNTIME_PIPE", pipe);
     }
+    if let Some(addr) = tcp {
+        env_config.tcp = Some(addr.clone());
+        command.env("TPT_RUNTIME_TCP", addr);
+    }
 
     #[cfg(windows)]
     command.creation_flags(0x0000_0008 | 0x0000_0200); // DETACHED_PROCESS | NEW_PROCESS_GROUP
@@ -666,11 +688,17 @@ fn start_daemon(state_dir: Option<String>, pipe: Option<String>) -> Result<()> {
     }
 
     command.spawn().context("failed to spawn daemon")?;
-    println!(
-        "daemon starting on {} (state: {})",
-        env_config.pipe_name,
-        env_config.state_dir.display()
-    );
+    match &env_config.tcp {
+        Some(addr) => println!(
+            "daemon starting on tcp://{addr} (state: {})",
+            env_config.state_dir.display()
+        ),
+        None => println!(
+            "daemon starting on {} (state: {})",
+            env_config.pipe_name,
+            env_config.state_dir.display()
+        ),
+    }
     Ok(())
 }
 

@@ -85,6 +85,7 @@ wasmtime = "49"
 wasmtime-wasi = "49"
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
+    "Win32_System_SystemInformation",
     "Win32_Security",
     "Win32_Storage",
     "Win32_Storage_FileSystem",

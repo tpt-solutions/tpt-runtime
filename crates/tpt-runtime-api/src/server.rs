@@ -20,8 +20,13 @@ pub struct ApiState {
 }
 
 /// Serves the local API until a client calls `daemon.shutdown` or the
-/// shutdown watch fires.
+/// shutdown watch fires. Uses the configured TCP transport when present
+/// (SPEC §39 remote runtime), else the platform default.
 pub async fn serve(config: DaemonConfig, state: Arc<ApiState>) -> Result<()> {
+    if let Some(addr) = &config.tcp {
+        return serve_tcp(addr, state).await;
+    }
+
     #[cfg(windows)]
     {
         use tokio::net::windows::named_pipe::ServerOptions;
@@ -70,31 +75,42 @@ pub async fn serve(config: DaemonConfig, state: Arc<ApiState>) -> Result<()> {
             .next()
             .and_then(|p| p.parse().ok())
             .unwrap_or(7900);
-        let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
-            .await
-            .map_err(|err| {
-                RuntimeError::new(
-                    ErrorKind::System,
-                    format!("cannot bind 127.0.0.1:{port}: {err}"),
-                )
-            })?;
-        let mut shutdown_rx = state.shutdown.subscribe();
-        loop {
-            tokio::select! {
-                _ = shutdown_rx.changed() => break,
-                accepted = listener.accept() => {
-                    let (stream, _) = accepted.map_err(|err| {
-                        RuntimeError::new(ErrorKind::System, format!("accept failed: {err}"))
-                    })?;
-                    let state = state.clone();
-                    tokio::spawn(async move {
-                        let _ = handle_connection(stream, state).await;
-                    });
-                }
+        serve_tcp(&format!("127.0.0.1:{port}"), state).await
+    }
+}
+
+/// Serves the API over TCP at `addr` (same NDJSON framing as the pipe;
+/// remote runtime transport, SPEC §39 - no authentication: trusted
+/// networks only).
+pub async fn serve_tcp(addr: &str, state: Arc<ApiState>) -> Result<()> {
+    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|err| {
+        RuntimeError::new(ErrorKind::System, format!("cannot bind {addr}: {err}"))
+    })?;
+    serve_tcp_listener(listener, state).await
+}
+
+/// Serves the API over an already-bound TCP listener (lets callers bind
+/// port 0 and discover the port).
+pub async fn serve_tcp_listener(
+    listener: tokio::net::TcpListener,
+    state: Arc<ApiState>,
+) -> Result<()> {
+    let mut shutdown_rx = state.shutdown.subscribe();
+    loop {
+        tokio::select! {
+            _ = shutdown_rx.changed() => break,
+            accepted = listener.accept() => {
+                let (stream, _) = accepted.map_err(|err| {
+                    RuntimeError::new(ErrorKind::System, format!("accept failed: {err}"))
+                })?;
+                let state = state.clone();
+                tokio::spawn(async move {
+                    let _ = handle_connection(stream, state).await;
+                });
             }
         }
-        Ok(())
     }
+    Ok(())
 }
 
 type SharedWriter = Arc<AsyncMutex<Box<dyn AsyncWrite + Unpin + Send>>>;

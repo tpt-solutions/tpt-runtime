@@ -26,6 +26,17 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - OCI images now pull on demand (pull policy `if-missing`); set
   `TPT_RUNTIME_OCI_PULL=0` to keep the backend strictly local.
 
+### Added
+
+- Restart reconciliation: on boot, the previous run's workload registry
+  is reconciled before the API opens (mid-flight workloads attributed as
+  failed, history preserved).
+- Admission against discovered host capacity (CPU, RAM, GPU count)
+  instead of unknown/infinite.
+- `--tcp HOST:PORT` serves the API over TCP for remote access (SPEC 39);
+  the banner reflects the active transport and warns about the missing
+  authentication on TCP.
+
 ## [0.1.0]
 
 Initial release: the Windows host daemon.

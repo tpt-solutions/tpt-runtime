@@ -29,6 +29,12 @@ logs persist on disk.
 reconciliation first; treat execution snapshots as a consequence of
 checkpoint/restore progress.
 
+**Status: the registry snapshot is implemented** — the manager persists
+after every lifecycle transition (`with_snapshot_path`) and the daemon
+reconciles on boot (`reconcile`): mid-flight workloads are attributed as
+`Failed (killed)`, `Created` stay startable, terminal records remain as
+history with readable logs.
+
 ## 2. Checkpoint/restore
 
 **Native Windows processes.** No supported user-mode full-process
@@ -71,6 +77,12 @@ free; a network transport needs a token story), and event stream
 multiplexing (already per-connection). SPEC §39's model (local runtime
 fronting a remote one) fits: the daemon proxies workload creation marked
 with a target selector, keeping policy decisions local.
+
+**Status: TCP is implemented (unauthenticated)** — `serve_tcp` /
+`ApiClient` over `config.tcp`, `tpt --remote host:port` on the CLI side.
+TLS/token authentication is the remaining piece before untrusted
+networks; until then the transport is loopback / trusted-network only and
+says so in its docs and banner.
 
 ## 5. Edge runtime
 

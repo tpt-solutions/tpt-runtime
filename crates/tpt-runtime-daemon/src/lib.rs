@@ -37,9 +37,10 @@ pub async fn run(config: DaemonConfig) -> Result<()> {
     let gpu_telemetry = match tpt_runtime_gpu::discover_gpus() {
         Ok(gpus) if gpus.is_empty() => {
             eprintln!("[daemon] no GPUs discovered");
-            None
+            (0, None)
         }
         Ok(gpus) => {
+            let count = gpus.len() as u32;
             {
                 let mut registry = devices.lock().unwrap();
                 for gpu in gpus {
@@ -47,26 +48,32 @@ pub async fn run(config: DaemonConfig) -> Result<()> {
                     registry.register(gpu.as_device());
                 }
             }
-            Some(tpt_runtime_gpu::GpuTelemetry::spawn(
-                std::time::Duration::from_secs(5),
-            ))
+            (
+                count,
+                Some(tpt_runtime_gpu::GpuTelemetry::spawn(
+                    std::time::Duration::from_secs(5),
+                )),
+            )
         }
         Err(err) => {
             eprintln!("[daemon] GPU discovery failed: {err}");
-            None
+            (0, None)
         }
     };
 
-    let manager = Arc::new(WorkloadManager::new(
-        config.logs_dir(),
-        events.clone(),
-        metrics.clone(),
-        storage.clone(),
-        network,
-        devices,
-        secrets,
-        PolicyEngine::new(tpt_runtime_policy::HostCapacity::unknown()),
-    ));
+    let manager = Arc::new(
+        WorkloadManager::new(
+            config.logs_dir(),
+            events.clone(),
+            metrics.clone(),
+            storage.clone(),
+            network,
+            devices,
+            secrets,
+            PolicyEngine::new(tpt_runtime_policy::HostCapacity::discover(gpu_telemetry.0)),
+        )
+        .with_snapshot_path(config.registry_file()),
+    );
 
     // Backends (SPEC §10). OCI and Linux register so their prepare paths
     // give precise errors; their start paths report pending integrations.
@@ -93,18 +100,31 @@ pub async fn run(config: DaemonConfig) -> Result<()> {
     ));
     manager.register_backend(Arc::new(tpt_runtime_linux::LinuxBackend::new()));
 
-    eprintln!(
-        "[daemon] tpt-runtime {} listening on {}",
-        env!("CARGO_PKG_VERSION"),
-        config.pipe_name
-    );
+    // Restart reconciliation (SPEC Phase 9): records from the previous
+    // run are reconciled against the snapshot before the API opens.
+    let reconciled = manager.reconcile();
+    if reconciled > 0 {
+        eprintln!("[daemon] reconciled {reconciled} workload record(s) from the previous run");
+    }
+
+    match &config.tcp {
+        Some(addr) => eprintln!(
+            "[daemon] tpt-runtime {} listening on tcp://{addr} (no auth - trusted networks only)",
+            env!("CARGO_PKG_VERSION"),
+        ),
+        None => eprintln!(
+            "[daemon] tpt-runtime {} listening on {}",
+            env!("CARGO_PKG_VERSION"),
+            config.pipe_name
+        ),
+    }
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let state = Arc::new(ApiState {
         manager,
         started_at: std::time::Instant::now(),
         shutdown: shutdown_tx,
-        gpu: gpu_telemetry,
+        gpu: gpu_telemetry.1,
     });
 
     // Ctrl+C triggers the same shutdown path as daemon.shutdown.

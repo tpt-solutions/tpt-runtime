@@ -15,6 +15,14 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - Report per-class (`ResourceClass`) decisions so CPU, memory and GPU outcomes
   can be reported independently.
 
+### Added
+
+- `HostCapacity::discover(gpus)`: real host capacity for admission -
+  CPU cores from the scheduler, RAM from the OS (`GlobalMemoryStatusEx`
+  on Windows, /proc/meminfo elsewhere), GPU count as given. Discovery
+  problems degrade to unbounded, never to failure; the daemon now admits
+  against discovered capacity instead of assuming infinity.
+
 ## [0.1.0]
 
 Initial release: pure admission control.

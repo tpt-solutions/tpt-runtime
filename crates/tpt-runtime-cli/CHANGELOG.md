@@ -26,6 +26,12 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - End-to-end tests driving `up`/`down` over a real named pipe against a
   live manager stack.
 
+### Added
+
+- `tpt --remote HOST:PORT` runs any command against a remote daemon over
+  TCP (SPEC 39); `tpt daemon start --tcp HOST:PORT` launches one. The
+  TCP transport is unauthenticated - trusted networks only.
+
 ## [0.1.0]
 
 Initial release: the `tpt` developer CLI.

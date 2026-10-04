@@ -13,3 +13,6 @@ categories = ["workload-management"]
 serde = { workspace = true }
 tpt-runtime-core = { workspace = true }
 tpt-runtime-model = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }

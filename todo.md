@@ -4,7 +4,7 @@ Tracks work against [SPEC.md](SPEC.md). Organized by the spec's Phase Roadmap (�
 
 Status after the first implementation pass: the MVP (§43) is working end to
 end on Windows — daemon, CLI, Windows-process and WASM backends, lifecycle,
-events, observability — with 50 test suites (171 tests) green. See
+events, observability — with 55 test suites (227 tests) green. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the map and known MVP
 limitations.
 
@@ -132,7 +132,7 @@ the removed `rustdoc` rustup component.
 
 ## Phase 9 — Advanced Runtime
 
-- [ ] Snapshots
+- [x] Snapshots *(registry snapshot form: the workload registry persists after every lifecycle transition, atomically rewritten; execution snapshots remain with checkpoint/restore - see docs/RESEARCH-ADVANCED-RUNTIME.md)*
 - [x] Checkpoint/restore research *(docs/RESEARCH-ADVANCED-RUNTIME.md: volume-checkpoint protocol, WASM deterministic replay, VM-based path via Boxcar)*
 - [ ] Remote runtime
 - [ ] Edge runtime
@@ -174,8 +174,8 @@ the removed `rustdoc` rustup component.
 - [x] Device disappearance *(unplug → attach denial for new workloads, re-plug restores, existing claims untouched)*
 - [x] Network failure *(static port conflicts, explicit failure when no ephemeral port is pickable, expose-mode validation)*
 - [x] Storage failure *(missing/deleted volume backing dirs, corrupt `volume.json` fails open loudly, non-empty removal refusal)*
-- [x] Runtime restart *(scripted: dropping the last job handle reaps the workload without an explicit stop)*
-- [ ] Host restart
+- [x] Runtime restart *(scripted kill-on-close reaping; plus restart reconciliation: on daemon start the previous registry is reconciled - mid-flight workloads attributed as Failed (killed), Created stay startable, terminal records survive as history with readable logs)*
+- [ ] Host restart *(reconciliation covers the registry side; physical-reboot testing is a lab exercise)*
 
 ## Security Testing (§46)
 

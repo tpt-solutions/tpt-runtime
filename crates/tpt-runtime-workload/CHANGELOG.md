@@ -37,6 +37,17 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - `WorkloadInfo.labels`: manifest labels are now inspectable and listed,
   which project tooling (`tpt down`) uses to find its own workloads.
 
+### Added
+
+- **Registry snapshots + restart reconciliation** (SPEC Phase 9):
+  `with_snapshot_path` persists the registry after every lifecycle
+  transition (atomic write-then-rename); `reconcile` on daemon start
+  adopts the previous run's records - terminal records survive as history
+  (logs stay readable), `Created` workloads stay startable with their
+  volume mounts re-resolved, and anything mid-flight is attributed as
+  `Failed` with `killed` set (kill-on-close semantics). Corrupt snapshots
+  are dropped, not trusted; name conflicts favor live records.
+
 ## [0.1.0]
 
 Initial release: one lifecycle across every execution backend.

@@ -56,7 +56,7 @@ Supporting crates:
 | `tpt-runtime-ipc` | request/response envelope, NDJSON framing (§22, §30); optional `archon` feature: capability-gated shared page buffers (§16) |
 | `tpt-runtime-security` | capability-gated secret store (§24) |
 | `tpt-runtime-observe` | event hub (broadcast + JSONL), metrics registry (§27, §28) |
-| `tpt-runtime-api` | named-pipe server, CLI client (§30) |
+| `tpt-runtime-api` | named-pipe server, CLI client, TCP transport for remote daemons (§30, §39) |
 | `tpt-runtime-workload` | lifecycle orchestration across backends (§26) |
 | `tpt-runtime-daemon` | assembles the stack, serves until shutdown (§43) |
 | `tpt-runtime-cli` | `tpt` binary; pure API client (§29, §30) |
@@ -105,6 +105,12 @@ The state machine itself (which transitions are legal) lives in
 - **Device claims** follow the workload lifecycle: exclusive conflicts deny
   attach (create) and re-attach (start) loudly, and claims are released when
   a workload settles or is destroyed.
+- **Admission** runs against discovered host capacity (CPU cores, RAM, GPU
+  count); a request that cannot be satisfied is denied, not clamped (hard
+  limit policy, §25/§48).
+- **The registry persists**: every lifecycle transition rewrites the
+  snapshot atomically; a restart reconciles it (mid-flight → `Failed
+  (killed)`, `Created` stays startable, terminal records become history).
 - **Denial is loud** (SPEC §48): missing GPU, unknown volume, unsatisfiable
   limits, and unregistered backends are errors with attribution
   (`workload → backend → operation`), never silent downgrades.
@@ -222,6 +228,10 @@ subscribe}`, `volumes.{create,list,remove}`, `devices.list`,
 | Developer platform | `tpt up`/`down` over a real pipe (`cli` project_ops e2e); project parsing (`config` project tests) |
 | Linux → WSL | real-distro tests in `linux/src/backend.rs` (env + volume translation, relay stop; adaptive skip without distros) |
 | GPU telemetry | sampling + cache (`gpu/src/telemetry.rs`); surfaced through `daemon.status` |
+| Remote runtime | TCP transport e2e (`api/tests/tcp_remote.rs`); same framing as the pipe (§39) |
+| Failure: runtime restart (reconciliation) | snapshot persist + `reconcile` (`workload/tests/restart_reconciliation.rs`) |
+| Host capacity | discovery + admission (`policy/src/host.rs`) |
+| Archon end-to-end | volume → durable engine → shared buffers (`storage/tests/archon_integration.rs`, `archon` feature) |
 | Malformed manifests | `config` negative tests |
 
 ## 8. Developer platform (§33–§34)

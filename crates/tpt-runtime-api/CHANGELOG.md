@@ -20,6 +20,16 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
   temperature and power samples) when the daemon discovered GPUs; `ApiState`
   carries the telemetry handle.
 
+### Added
+
+- TCP transport (SPEC 39): `serve_tcp`/`serve_tcp_listener` serve the
+  same NDJSON protocol over TCP; `ApiClient` connects to `config.tcp`
+  when set, so the entire CLI works unchanged against a remote daemon
+  (`tpt --remote host:port ...`). Same framing, same envelope; no
+  authentication - trusted networks only.
+- Remote-transport integration test over a real socket with port 0
+  binding and manifest round trips.
+
 ## [0.1.0]
 
 Initial release: the local named-pipe JSON API.

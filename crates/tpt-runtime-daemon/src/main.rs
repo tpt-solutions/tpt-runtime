@@ -15,8 +15,13 @@ fn main() {
                     config.pipe_name = pipe;
                 }
             }
+            "--tcp" => {
+                if let Some(addr) = args.next() {
+                    config.tcp = Some(addr);
+                }
+            }
             other => {
-                eprintln!("unknown argument '{other}' (usage: tpt-runtime-daemon [--state-dir DIR] [--pipe NAME])");
+                eprintln!("unknown argument '{other}' (usage: tpt-runtime-daemon [--state-dir DIR] [--pipe NAME] [--tcp HOST:PORT])");
                 std::process::exit(2);
             }
         }

@@ -19,3 +19,6 @@ serde_json = { workspace = true }
 tpt-runtime-core = { workspace = true }
 tpt-runtime-model = { workspace = true }
 uuid = { workspace = true }
+
+[dev-dependencies]
+tpt-runtime-ipc = { workspace = true, features = ["archon"] }

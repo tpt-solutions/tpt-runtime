@@ -1,4 +1,7 @@
 //! API client used by the CLI (SPEC §30: CLI is an API client).
+//!
+//! Transport: the platform named pipe by default; TCP when the config (or
+//! `tpt --remote`) asks for a remote daemon (SPEC §39).
 
 use std::time::Duration;
 use tokio::io::BufReader;
@@ -9,24 +12,72 @@ use tpt_runtime_ipc::{read_message, write_message, Request, Response};
 
 /// One open connection to the runtime daemon.
 pub struct ApiClient {
-    reader: BufReader<ReadHalf>,
+    reader: ReadHalf,
     writer: WriteHalf,
     next_id: u64,
 }
 
-#[cfg(windows)]
-type ReadHalf = tokio::io::ReadHalf<tokio::net::windows::named_pipe::NamedPipeClient>;
-#[cfg(windows)]
-type WriteHalf = tokio::io::WriteHalf<tokio::net::windows::named_pipe::NamedPipeClient>;
-#[cfg(not(windows))]
-type ReadHalf = tokio::io::ReadHalf<tokio::net::TcpStream>;
-#[cfg(not(windows))]
-type WriteHalf = tokio::io::WriteHalf<tokio::net::TcpStream>;
+enum ReadHalf {
+    Tcp(BufReader<tokio::io::ReadHalf<tokio::net::TcpStream>>),
+    #[cfg(windows)]
+    Pipe(BufReader<tokio::io::ReadHalf<tokio::net::windows::named_pipe::NamedPipeClient>>),
+}
+
+enum WriteHalf {
+    Tcp(tokio::io::WriteHalf<tokio::net::TcpStream>),
+    #[cfg(windows)]
+    Pipe(tokio::io::WriteHalf<tokio::net::windows::named_pipe::NamedPipeClient>),
+}
+
+impl ReadHalf {
+    fn as_read(&mut self) -> &mut (dyn tokio::io::AsyncBufRead + Unpin + Send) {
+        match self {
+            ReadHalf::Tcp(read) => read,
+            #[cfg(windows)]
+            ReadHalf::Pipe(read) => read,
+        }
+    }
+}
+
+impl WriteHalf {
+    fn as_write(&mut self) -> &mut (dyn tokio::io::AsyncWrite + Unpin + Send) {
+        match self {
+            WriteHalf::Tcp(write) => write,
+            #[cfg(windows)]
+            WriteHalf::Pipe(write) => write,
+        }
+    }
+}
 
 impl ApiClient {
-    /// Connects to the daemon's pipe with a short retry window (the daemon
-    /// creates pipe instances on demand).
+    /// Connects to the daemon: TCP when configured (remote runtime), else
+    /// the platform pipe with a short retry window (the daemon creates
+    /// pipe instances on demand).
     pub async fn connect(config: &DaemonConfig) -> Result<Self> {
+        if let Some(addr) = &config.tcp {
+            return Self::connect_tcp(addr).await;
+        }
+        Self::connect_pipe(config).await
+    }
+
+    /// Connects over the TCP transport (remote runtime, SPEC §39).
+    async fn connect_tcp(addr: &str) -> Result<Self> {
+        let stream = tokio::net::TcpStream::connect(addr).await.map_err(|err| {
+            RuntimeError::new(
+                ErrorKind::NotFound,
+                format!("runtime daemon is not reachable on tcp://{addr}: {err}"),
+            )
+        })?;
+        let (read_half, write_half) = tokio::io::split(stream);
+        Ok(Self {
+            reader: ReadHalf::Tcp(BufReader::new(read_half)),
+            writer: WriteHalf::Tcp(write_half),
+            next_id: 1,
+        })
+    }
+
+    /// Connects over the platform pipe with a retry window.
+    async fn connect_pipe(config: &DaemonConfig) -> Result<Self> {
         let deadline = std::time::Instant::now() + Duration::from_secs(3);
         loop {
             #[cfg(windows)]
@@ -46,8 +97,8 @@ impl ApiClient {
                 Ok(stream) => {
                     let (read_half, write_half) = tokio::io::split(stream);
                     return Ok(Self {
-                        reader: BufReader::new(read_half),
-                        writer: write_half,
+                        reader: ReadHalf::Pipe(BufReader::new(read_half)),
+                        writer: WriteHalf::Pipe(write_half),
                         next_id: 1,
                     });
                 }
@@ -80,16 +131,17 @@ impl ApiClient {
             method: method.to_owned(),
             params,
         };
-        write_message(&mut self.writer, &request).await?;
+        write_message(self.writer.as_write(), &request).await?;
         // read responses, skipping any interleaved event lines (this
         // connection did not subscribe)
         loop {
-            let response: Response = read_message(&mut self.reader).await?.ok_or_else(|| {
-                RuntimeError::new(
-                    ErrorKind::System,
-                    "daemon closed the connection before responding",
-                )
-            })?;
+            let response: Response =
+                read_message(self.reader.as_read()).await?.ok_or_else(|| {
+                    RuntimeError::new(
+                        ErrorKind::System,
+                        "daemon closed the connection before responding",
+                    )
+                })?;
             if response.id == id {
                 return match response.error {
                     Some(err) => Err(RuntimeError::new(
@@ -105,7 +157,7 @@ impl ApiClient {
 
     /// Receives one event line (only meaningful on a subscribed connection).
     pub async fn recv_event(&mut self) -> Result<RuntimeEvent> {
-        let event: RuntimeEvent = read_message(&mut self.reader)
+        let event: RuntimeEvent = read_message(self.reader.as_read())
             .await?
             .ok_or_else(|| RuntimeError::new(ErrorKind::System, "event stream closed by daemon"))?;
         Ok(event)
